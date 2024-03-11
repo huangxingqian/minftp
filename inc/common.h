@@ -17,6 +17,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/select.h>
+#include <netdb.h>
 
 
 #define ERR_EXIT(m)\
