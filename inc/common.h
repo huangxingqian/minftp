@@ -18,7 +18,12 @@
 #include <sys/wait.h>
 #include <sys/select.h>
 #include <netdb.h>
+#include <pwd.h>
 
+
+#define MAX_COMMAND_LINE 1024
+#define MAX_COMMAND 32
+#define MAX_ARG 1024
 
 #define ERR_EXIT(m)\
 	do\

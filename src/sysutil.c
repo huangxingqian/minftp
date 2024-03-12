@@ -1,5 +1,8 @@
 #include "sysutil.h"
 
+/**
+ * 
+*/
 int tcp_server(const char *host, unsigned short port)
 {
 	int listenfd;
@@ -144,8 +147,9 @@ int write_timeout(int fd, unsigned int wait_seconds)
 	return ret;
 }
 
-int accept_timeout(int fd, struct sockaddr_in *addr, socklen_t addrlen, unsigned int wait_seconds)
+int accept_timeout(int fd, struct sockaddr_in *addr, unsigned int wait_seconds)
 {
+	socklen_t addrlen = sizeof(struct sockaddr_in);
 	int ret;
 	if (wait_seconds > 0) {
 		fd_set accept_fdset;
