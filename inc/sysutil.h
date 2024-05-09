@@ -13,5 +13,6 @@ int accept_timeout(int fd, struct sockaddr_in *addr, unsigned int wait_seconds);
 void activate_nonblock(int fd);
 void deactivate_nonblock(int fd);
 int connect_timeout(int fd, struct sockaddr_in *addr, socklen_t addrlen,unsigned int wait_seconds);
+ssize_t readline(int sockfd, void *buf, ssize_t maxline);
 
 #endif

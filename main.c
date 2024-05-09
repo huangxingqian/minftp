@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
 
         if (pid == 0)
         {
-            close(listenfd);
+            sess.ctrl_fd = conn;
             begin_session(&sess);
         }
         else

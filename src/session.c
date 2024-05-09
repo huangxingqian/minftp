@@ -31,12 +31,14 @@ void begin_session(session_t *sess)
     {
         // ftp
         close(sockfd[0]);
+        sess->child_fd = sockfd[1];
         handle_child(sess);
     }
     else
     {
         // nobody
         close(sockfd[1]);
+        sess->child_fd = sockfd[0];
         handle_parent(sess);
     }
 
