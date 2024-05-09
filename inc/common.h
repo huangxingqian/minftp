@@ -19,6 +19,7 @@
 #include <sys/select.h>
 #include <netdb.h>
 #include <pwd.h>
+#include <ctype.h>
 
 
 #define MAX_COMMAND_LINE 1024

@@ -1,5 +1,6 @@
 #include "ftpproto.h"
 #include "session.h"
+#include "sysutil.h"
 
 void handle_child(session_t *sess)
 {

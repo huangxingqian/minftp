@@ -12,7 +12,7 @@ void str_splist(const char *str, char *left, char *right,char c)
 {
     char *p = strchr(str, c);
 
-    if (p==null)
+    if (p == NULL)
         strcpy(left, str);
     else
     {
@@ -27,7 +27,7 @@ int str_all_space(const char *str)
     {
         if(!isspace(str))
             return 0;
-        str++    
+        str++;   
     }
     return 1;
 }
