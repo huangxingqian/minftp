@@ -8,7 +8,7 @@ void str_trim_crlf(char *str)
         *p--='\0';
 }
 
-void str_splist(const char *str, char *left, char *right,char c)
+void str_split(const char *str, char *left, char *right,char c)
 {
     char *p = strchr(str, c);
 
@@ -25,7 +25,7 @@ int str_all_space(const char *str)
 {
     while(*str)
     {
-        if(!isspace(str))
+        if(!isspace(*str))
             return 0;
         str++;   
     }
