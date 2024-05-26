@@ -8,7 +8,7 @@ SUBOBJ	=$(SUBSRC:%.c=%.o)
 INCDIR	=-I ./inc
 
 $(BIN):$(ROOTOBJ) $(SUBOBJ)
-	$(CC) $(CFLAGS) -o $(BIN) $(SUBOBJ)
+	$(CC) $(CFLAGS) -o $(BIN) $(SUBOBJ) -lcrypt
 
 .c.o:
 	$(CC) $(CFLAGS) $(INCDIR) -c $< -o $@

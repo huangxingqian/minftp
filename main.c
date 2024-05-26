@@ -19,7 +19,8 @@ int main(int argc, char* argv[])
     session_t sess = 
     {
         -1, "", "", "",
-        -1, -1
+        -1, -1,
+        0
     };
 
     int listenfd = tcp_server(NULL, 5188);

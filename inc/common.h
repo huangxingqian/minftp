@@ -20,6 +20,12 @@
 #include <netdb.h>
 #include <pwd.h>
 #include <ctype.h>
+#include <shadow.h>
+#include <crypt.h>
+#include <time.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <sys/time.h>
 
 
 #define MAX_COMMAND_LINE 1024
