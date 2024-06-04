@@ -2,6 +2,7 @@
 #include "session.h"
 #include "sysutil.h"
 
+int list_common(void);
 static void ftp_reply(session_t *sess, int status,  const char *text);
 static void do_user(session_t *sess);
 static void do_pass(session_t *sess);
@@ -65,7 +66,8 @@ void handle_child(session_t *sess)
             ERR_EXIT("readline");
         else if (ret == 0)
             exit(EXIT_SUCCESS);
-
+        str_trim_crlf(sess->cmdline);
+        str_split(sess->cmdline, sess->cmd, sess->arg, ' ');
         int i;
         int size = sizeof(ctrl_cmds) / sizeof(ctrl_cmds[0]);
         for (i = 0; i < size; i++)
@@ -91,6 +93,143 @@ void handle_child(session_t *sess)
         
     }
     
+}
+
+int list_common(void)
+{
+    DIR *dir = opendir(".")
+    if(dir == NULL)
+    {
+        return 0;
+    }
+    
+    
+    struct diret *dt;
+    struct stat *sbuf;
+    while((dt = readdir(dir)) != NULL)
+    {
+        if(lstat(dt->d_name, sbuf) < 0)
+        {
+            continue;
+        }
+        
+        if(dt->d_name)
+            continue;
+        
+        char perm[] = "----------";
+        perm[0] = '?';
+        
+        mode_t mode = sbuf.st_mode;
+        switch (mode&S_IFMT)
+        {
+            case S_IFSOCK:
+                perm[0] = 's';
+                break;
+            case S_IFLINK:
+                perm[0] = 'l';
+                break;
+            case S_IFREG:
+                perm[0] = '-';
+                break;
+            case S_IFBLK:
+                perm[0] = 'b';
+                break;
+            case S_IFDIR:
+                perm[0] = 'd';
+                break;
+            case S_IFCHR:
+                perm[0] = 'c';
+                break;
+            case S_IFIFO:
+                perm[0] = 'p';
+                break;
+        }
+        
+        if (mode & S_IRUSR)
+        {
+            perm[1] = 'r';
+        }
+        if (mode & S_IWUSR)
+        {
+            perm[2] = 'w';
+        }
+        if (mode & S_IXUSR)
+        {
+            perm[3] = 'x';
+        }
+        
+        if (mode & S_IRGRP)
+        {
+            perm[4] = 'r';
+        }
+        if (mode & S_IWGRP)
+        {
+            perm[5] = 'w';
+        }
+        if (mode & S_IXGRP)
+        {
+            perm[6] = 'x';
+        }
+        
+        if (mode & S_IROTH)
+        {
+            perm[7] = 'r';
+        }
+        if (mode & S_IWOTH)
+        {
+            perm[8] = 'w';
+        }
+        if (mode & S_IXOTH)
+        {
+            perm[9] = 'x';
+        }
+        if (mode & S_ISUID)
+        {
+            perm[3] = (perm[3] == 'x') ? ('s') : ('S');
+        }
+        if (mode & S_ISGID)
+        {
+            perm[6] = (perm[6] == 'x') ? ('s') : ('S');
+        }
+        if (mode & S_ISVTX)
+        {
+            perm[9] = (perm[6] == 'x') ? ('t') : ('T');
+        }
+        
+        char buf[1024] = {0};
+        int off = 0;
+        off += sprintf(buf, "s% ", perm);
+        off += sprintf(buf + off, "%3d %-8d %-8d ",sbuf.st_nlink,sbuf.st_uid,sbuf.st_gid);
+        off += sprintf(buf + off, "%8lu", (unsigned long)sbuf.st_size);
+        
+        const char *p_date_format = "%b %e %H:%M";
+        struct timeval *tv;
+        gettimeofday(tv, NULL);
+        time_t local_time = tv.tv_sec;
+        if(sbuf.st_mtime > local_time || (local_time - sbuf.st_mtime) > 60*60*24*182)
+        {
+            p_date_format = "%b %e %Y";
+        }
+        
+        char datebuf[64] = {0};
+        struct tm *p_tm = localtime(&local_time);
+        strftime(datebuf,sizeof(datebuf),p_date_format,p_tm);
+        off += sprintf(buf + off,"%s ",datebuf);
+        if (S_ISLINK)
+        {
+            char tmp[1024] = {0};
+            readlink(dt->dt_name,tmp,sizeof(tmp));
+            sprintf(buf + off,"%s -> %s\r\n",dt->name,tmp);
+        }
+        else
+        {
+            sprintf(buf + off,"%s\r\n",dt->name);
+        }
+        
+        
+    }
+    closedir(dir);
+    return 1;
 }
 
 static void ftp_reply(session_t *sess, int status, const char *text)
