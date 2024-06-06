@@ -1,6 +1,8 @@
 #include "ftpproto.h"
 #include "session.h"
 #include "sysutil.h"
+#include "str.h"
+#include "common.h"
 
 int list_common(void);
 static void ftp_reply(session_t *sess, int status,  const char *text);
@@ -97,35 +99,42 @@ void handle_child(session_t *sess)
 
 int list_common(void)
 {
-    DIR *dir = opendir(".")
+    DIR *dir = opendir(".");
     if(dir == NULL)
     {
         return 0;
     }
     
     
-    struct diret *dt;
-    struct stat *sbuf;
+    struct dirent *dt = NULL;
+    struct stat sbuf = {0};
     while((dt = readdir(dir)) != NULL)
     {
-        if(lstat(dt->d_name, sbuf) < 0)
+        if(lstat(dt->d_name, &sbuf) < 0 )
+        {
+            continue;
+        }
+        if(dt->d_name == NULL)
+        {
+            continue;
+        }
+
+        if (strcmp(dt->d_name,".") == 0 || strcmp(dt->d_name,"..") == 0)
         {
             continue;
         }
         
-        if(dt->d_name)
-            continue;
-        
+        char buf[1024] = {0};
+        int off = 0;
         char perm[] = "----------";
         perm[0] = '?';
-        
         mode_t mode = sbuf.st_mode;
-        switch (mode&S_IFMT)
+        switch (mode & S_IFMT)
         {
             case S_IFSOCK:
                 perm[0] = 's';
                 break;
-            case S_IFLINK:
+            case S_IFLNK:
                 perm[0] = 'l';
                 break;
             case S_IFREG:
@@ -195,38 +204,33 @@ int list_common(void)
         {
             perm[9] = (perm[6] == 'x') ? ('t') : ('T');
         }
-        
-        char buf[1024] = {0};
-        int off = 0;
-        off += sprintf(buf, "s% ", perm);
-        off += sprintf(buf + off, "%3d %-8d %-8d ",sbuf.st_nlink,sbuf.st_uid,sbuf.st_gid);
-        off += sprintf(buf + off, "%8lu", (unsigned long)sbuf.st_size);
-        
+        off += sprintf(buf + off, "%s ", perm);
+        off += sprintf(buf + off, "%3ld %-8d %-8d ",sbuf.st_nlink, sbuf.st_uid, sbuf.st_gid);
+        off += sprintf(buf + off, "%8lu ", (unsigned long)sbuf.st_size);
         const char *p_date_format = "%b %e %H:%M";
-        struct timeval *tv;
-        gettimeofday(tv, NULL);
+        struct timeval tv = {0};
+        gettimeofday(&tv, NULL);
         time_t local_time = tv.tv_sec;
         if(sbuf.st_mtime > local_time || (local_time - sbuf.st_mtime) > 60*60*24*182)
         {
             p_date_format = "%b %e %Y";
         }
-        
         char datebuf[64] = {0};
         struct tm *p_tm = localtime(&local_time);
-        strftime(datebuf,sizeof(datebuf),p_date_format,p_tm);
-        off += sprintf(buf + off,"%s ",datebuf);
-        if (S_ISLINK)
+        strftime(datebuf, sizeof(datebuf), p_date_format, p_tm);
+        off += sprintf(buf + off, "%s ", datebuf);
+        if (S_ISLNK(mode))
         {
-            char tmp[1024] = {0};
-            readlink(dt->dt_name,tmp,sizeof(tmp));
-            sprintf(buf + off,"%s -> %s\r\n",dt->name,tmp);
+            char tmp[124] = {0};
+            readlink(dt->d_name, tmp, sizeof(tmp));
+            sprintf(buf + off, "%s -> %s\r\n", dt->d_name, tmp);
         }
         else
         {
-            sprintf(buf + off,"%s\r\n",dt->name);
+            sprintf(buf + off,"%s\r\n", dt->d_name);
         }
         
-        
+        printf("%s",buf);
     }
     closedir(dir);
     return 1;
@@ -313,6 +317,21 @@ static void do_quit(session_t *sess)
 }
 static void do_port(session_t *sess)
 {
+    unsigned int v[6] = {0};
+    sscanf(sess->arg,"%u,%u,%u,%u,%u,%u",&v[0],&v[1],&v[2],&v[3],&v[4],&v[5]);
+    sess->port_addr = (struct sockaddr_in *)malloc(sizeof(struct sockaddr_in *));
+    memset(sess->port_addr, 0, sizeof(sess->port_addr));
+    sess->port_addr->sin_family = AF_INET;
+    unsigned char *p = (unsigned char*)&sess->port_addr->sin_port;
+    p[0] = v[4];
+    p[1] = v[5];
+    
+    p = (unsigned char *)&sess->port_addr->sin_addr;
+    p[0] = v[1];
+    p[1] = v[2];
+    p[2] = v[3];
+    p[3] = v[4];
+    ftp_reply(sess, 200,"PORT command successful.Consider using PASV");
 }
 static void do_pasv(session_t *sess)
 {
@@ -324,7 +343,7 @@ void do_type(session_t *sess)
         ftp_reply(sess, 200,"switching to ASCII mode");
         sess->is_ascii = 1;
     }
-    else if(strcmp(sess->arg,"B") == 0)
+    else if(strcmp(sess->arg,"B") == 0 || strcmp(sess->arg,"I") == 0)
     {
         sess->is_ascii = 0;
         ftp_reply(sess, 200,"switching to Binary mode");
@@ -363,6 +382,11 @@ static void do_abor(session_t *sess)
 }
 static void do_pwd(session_t *sess)
 {
+    char text[1024+1] = {0};
+    char dir[1024+1] = {0};
+    getcwd(dir, 1024);
+    sprintf(text, "\"%s\"",dir);
+    ftp_reply(sess, 257, text);
 }
 static void do_nkd(session_t *sess)
 {

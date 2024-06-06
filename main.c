@@ -3,13 +3,15 @@
 #include "sysutil.h"
 #include "parseconf.h"
 #include "tunable.h"
+#include "ftpproto.h"
 
 int main(int argc, char* argv[])
 {
+    list_common();
     // parseconf_load_file("minftpd.conf");
     // printf("tunable_pasr_enable = %d\n", tunable_pasr_enable);
     // printf("tunable_listen_port = %d\n", tunable_listen_port);
-    // return 0;
+    return 0;
     if (getuid() != 0)
     {
         fprintf(stderr,"must be as root!\n");
@@ -19,8 +21,12 @@ int main(int argc, char* argv[])
     session_t sess = 
     {
         -1, "", "", "",
+
         -1, -1,
-        0
+        
+        NULL,-1,
+
+        0,0
     };
 
     int listenfd = tcp_server(NULL, 5188);
