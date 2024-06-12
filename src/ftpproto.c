@@ -329,7 +329,7 @@ static void do_port(session_t *sess)
     p = (unsigned char *)&sess->port_addr->sin_addr;
     p[0] = v[1];
     p[1] = v[2];
-    p[2] = v[3];
+    p[2] = v[3];  
     p[3] = v[4];
     ftp_reply(sess, 200,"PORT command successful.Consider using PASV");
 }
@@ -368,8 +368,39 @@ static void do_stor(session_t *sess)
 static void do_appe(session_t *sess)
 {
 }
+
+int do_port(session_t *sess)
+{
+  if (sess->port_addr != NULL) {
+    return 1;
+  }
+  return 0;
+}
+
+int do_pasv(session_t *sess)
+{
+  return 0;
+}
+int get_transfer_fd(session_t *sess)
+{
+  if (!do_port() && !do_pasv())
+  {
+    return 0;
+  }
+  
+  if (do_port) {
+    tcp_client();
+    
+  }
+}
+
+
 static void do_list(session_t *sess)
 {
+  if (get_transfer_fd == 0) {
+    printf()
+    return 0;
+  }
 }
 static void do_nlst(session_t *sess)
 {
