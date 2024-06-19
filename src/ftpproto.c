@@ -4,8 +4,11 @@
 #include "str.h"
 #include "common.h"
 
+
 int list_common(void);
 static void ftp_reply(session_t *sess, int status,  const char *text);
+int port_active(session_t *sess);
+int pasv_avtive(session_t *sess);
 static void do_user(session_t *sess);
 static void do_pass(session_t *sess);
 static void do_feat(session_t *sess);
@@ -335,6 +338,21 @@ static void do_port(session_t *sess)
 }
 static void do_pasv(session_t *sess)
 {
+  char ip[4] = {0};
+  getlocalip(ip);
+  sess->pasv_listen_fd = tcp_server(ip,0);
+  struct sockaddr_in addr;
+  socklent_t addrlen = sizeof(addr);
+  if (getsockname(fd, (struct sockaddr_in*)&addr,&addrlen) < 0) {
+    
+    ERR_EXIT("getsockname");
+  }
+  unsigned short port = ntohs(addr.sin_port);
+  unsigned int v[4];
+  sscanf(ip,"%u.%u.%u.%u",&v[0],&v[1],&v[3],&v[4]);
+  char text[1024] = {0};
+  sprintf(text,"Entering pasv mode (%u,%u,%u,%u,%u,%u)",v[0],v[1],v[2],[3],port>>8, port & 0xff);
+  ftp_reply(sess,227,text);
 }
 void do_type(session_t *sess)
 {
@@ -369,38 +387,80 @@ static void do_appe(session_t *sess)
 {
 }
 
-int do_port(session_t *sess)
+int port_active(session_t *sess)
 {
   if (sess->port_addr != NULL) {
+    if (pasv_avtive(sess))
+      return 0;
     return 1;
   }
   return 0;
 }
 
-int do_pasv(session_t *sess)
+int pasv_avtive(session_t *sess)
 {
+  if (sess->pasv_listen_fd != -1) {
+    if (port_active(sess)) {
+      fprintf(stderr,"botn port an pasv are active.");
+      exit(ERR_FAILURE);
+    }
+    return 1;
+  }
   return 0;
 }
 int get_transfer_fd(session_t *sess)
 {
-  if (!do_port() && !do_pasv())
+  int fd;
+  if (!port_active(sess) && !pasv_active(sess))
   {
+    fprintf(stderr,"debug:No port or pasv mode.")
     return 0;
   }
   
-  if (do_port) {
-    tcp_client();
+  if (port_active(sess)) {
+    fd = tcp_client(5177);
+    if (fd < 0) {
+      fprintf(stderr,"Create TCP client fail.")
+      return 0;
+    }
     
+    if (connect_timeout(fd, sess->port_addr, sizeof(sess->port_addr),tunable_connect_tineout) < 0) {
+      closedir(fd);
+      return 0;
+      
+    }
+    sess->data_fd = fd;
   }
+  
+  if (sess->port_addr) {
+    free(sess->port_addr);
+    sess->port_addr = NULL;
+  }
+  
+  if(pasv_active) {
+    int fd = accept_timeout(sess->pasv_listen_fd,NULL,tunable_accept_tineout);
+    if (fd == -1) {
+      close(sess->pasv_listen_fd);
+      return 0
+    }
+    sess->data_fd = fd;
+  }
+  
+  return 1;
 }
 
 
 static void do_list(session_t *sess)
 {
   if (get_transfer_fd == 0) {
-    printf()
-    return 0;
+    ftp_reply(sess,425,"Use port or pasv frist");
+    return;
   }
+  ftp_reply(sess,150,"Here comes the directory listing");
+  
+  list_common(sess);
+  close(data_fd);
+  ftp_reply(sess,226,"Directory send OK.")
 }
 static void do_nlst(session_t *sess)
 {

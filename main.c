@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
 
         -1, -1,
         
-        NULL,-1,
+        NULL,-1,-1,
 
         0,0
     };

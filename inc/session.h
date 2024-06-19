@@ -14,7 +14,8 @@ typedef struct session
     int parent_fd;
     int child_fd;
 
-    struct sockaddr_in *port_addr;
+    struct sockaddr_in* port_addr;
+    int pasv_listen_fd;
     int data_fd;
 
     uid_t uid;
