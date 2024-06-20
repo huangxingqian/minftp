@@ -7,7 +7,6 @@
 
 int main(int argc, char* argv[])
 {
-    list_common();
     // parseconf_load_file("minftpd.conf");
     // printf("tunable_pasr_enable = %d\n", tunable_pasr_enable);
     // printf("tunable_listen_port = %d\n", tunable_listen_port);
@@ -28,7 +27,7 @@ int main(int argc, char* argv[])
 
         0,0
     };
-
+    signal(SIGHLD,SIG_IGN);
     int listenfd = tcp_server(NULL, 5188);
     int conn;
     pid_t pid;

@@ -13,6 +13,28 @@ int getlocalip(char *ip)
     strcpy(ip, inet_ntoa(*(struct in_addr*)hp->h_addr));
     return 0;
 }
+
+int tcp_client(unsigned short port)
+{
+  int sockfd;
+  if ((sockfd = socket(AF_INET,SOCK_STREAM,0)) < 0) {
+    ERR_EXIT("client socket");
+  }
+  if (port > 0) {
+    int on = 1;
+    if ((setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,(const char*)&on,sizeof(on))) < 0)
+      ERR_EXIT("sersockopt");
+      
+      struct sockaddr_in localaddr;
+      localaddr.sin_family = AF_INET;
+      localaddr.sin_port = htons(port);
+      localaddr.sin_addr = inet_addr(10.58.14.133);
+      
+      if(bind(sockfd,(struct sockaddr*)&localaddr,sizeof(localaddr)) < 0)
+        ERR_EXIT("bind");
+  }
+  return sockfd;
+}
 /**
  * 
 */
