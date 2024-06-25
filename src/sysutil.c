@@ -28,7 +28,7 @@ int tcp_client(unsigned short port)
       struct sockaddr_in localaddr;
       localaddr.sin_family = AF_INET;
       localaddr.sin_port = htons(port);
-      localaddr.sin_addr = inet_addr(10.58.14.133);
+      localaddr.sin_addr.s_addr = inet_addr("10.58.14.133");
       
       if(bind(sockfd,(struct sockaddr*)&localaddr,sizeof(localaddr)) < 0)
         ERR_EXIT("bind");

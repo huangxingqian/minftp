@@ -9,7 +9,7 @@
 int list_common(session_t *sess);
 static void ftp_reply(session_t *sess, int status,  const char *text);
 int port_active(session_t *sess);
-int pasv_ative(session_t *sess);
+int pasv_active(session_t *sess);
 static void do_user(session_t *sess);
 static void do_pass(session_t *sess);
 static void do_feat(session_t *sess);
@@ -324,7 +324,7 @@ static void do_port(session_t *sess)
     unsigned int v[6] = {0};
     sscanf(sess->arg,"%u,%u,%u,%u,%u,%u",&v[0],&v[1],&v[2],&v[3],&v[4],&v[5]);
     sess->port_addr = (struct sockaddr_in *)malloc(sizeof(struct sockaddr_in *));
-    memset(sess->port_addr, 0, sizeof(strut sockaddr_in));
+    memset(sess->port_addr, 0, sizeof(struct sockaddr_in));
     sess->port_addr->sin_family = AF_INET;
     unsigned char *p = (unsigned char*)&sess->port_addr->sin_port;
     p[0] = v[4];
