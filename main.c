@@ -7,10 +7,7 @@
 
 int main(int argc, char* argv[])
 {
-    // parseconf_load_file("minftpd.conf");
-    // printf("tunable_pasr_enable = %d\n", tunable_pasr_enable);
-    // printf("tunable_listen_port = %d\n", tunable_listen_port);
-    return 0;
+    parseconf_load_file("minftpd.conf");
     if (getuid() != 0)
     {
         fprintf(stderr,"must be as root!\n");
@@ -27,7 +24,7 @@ int main(int argc, char* argv[])
 
         0,0
     };
-    signal(SIGHLD,SIG_IGN);
+    signal(SIGCHLD,SIG_IGN);
     int listenfd = tcp_server(NULL, 5188);
     int conn;
     pid_t pid;

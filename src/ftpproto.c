@@ -51,7 +51,12 @@ ftpcmd_t ctrl_cmds[] =
 {
     {"USER", do_user},
     {"PASS", do_pass},
-    {"FEAT", do_feat}
+    {"FEAT", do_feat},
+    {"PWD",do_pwd},
+    {"TYPE",do_type},
+    {"PASV",do_pasv},
+    {"PORT",do_port},
+    {"LIST",do_list}
 };
 
 
@@ -78,7 +83,7 @@ void handle_child(session_t *sess)
         int size = sizeof(ctrl_cmds) / sizeof(ctrl_cmds[0]);
         for (i = 0; i < size; i++)
         {
-            if (strcmp(ctrl_cmds[i].cmd, sess->arg) == 0)
+            if (strcmp(ctrl_cmds[i].cmd, sess->cmd) == 0)
             {
                 if (ctrl_cmds[i].cmd_handler != NULL)
                 {
@@ -331,10 +336,10 @@ static void do_port(session_t *sess)
     p[1] = v[5];
     
     p = (unsigned char *)&sess->port_addr->sin_addr;
-    p[0] = v[1];
-    p[1] = v[2];
-    p[2] = v[3];  
-    p[3] = v[4];
+    p[0] = v[0];
+    p[1] = v[1];
+    p[2] = v[2];  
+    p[3] = v[3];
     ftp_reply(sess, 200,"PORT command successful.Consider using PASV");
 }
 static void do_pasv(session_t *sess)
