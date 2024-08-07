@@ -241,7 +241,7 @@ int list_common(session_t *sess)
         }
         
         printf("%s",buf);
-        writen(see->data_fd,buf,strlen(buf));
+        writen(sess->data_fd,buf,strlen(buf));
     }
     closedir(dir);
     return 1;

@@ -7,7 +7,7 @@
 void begin_session(session_t *sess)
 {
     priv_sock_init(sess);
-    pid_t pid
+    pid_t pid;
     
     pid = fork();
     if (pid < 0)

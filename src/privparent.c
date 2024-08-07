@@ -15,7 +15,7 @@ static void privop_pasv_listen(session_t *sess)
 {
   
 }
-static void privop_pasv_accpet(session_t *sess)
+static void privop_pasv_accept(session_t *sess)
 {
   
 }

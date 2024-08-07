@@ -357,7 +357,7 @@ void send_fd(int sockfd, int fd)
   
   p_cmsg=CMSG_FIRSTHDR(&msg);
   p_cmsg->cmsg_level=SOL_SOCKET;
-  p_cmsg->cmsg_type=SCM_RIGTHS;
+  p_cmsg->cmsg_type=SCM_RIGHTS;
   p_cmsg->cmsg_len=CMSG_LEN(sizeof(fd));
   p_fds=(int*)CMSG_DATA(p_cmsg);
   *p_fds=fd;
@@ -383,7 +383,7 @@ int recv_fd(int sockfd)
   char recvchar=0;
   struct iovec vec;
   int recvfd;
-  char cmsgbuf[CMSG_SPACE(sizeof(readfd))];
+  char cmsgbuf[CMSG_SPACE(sizeof(recvfd))];
   int *p_fd;
   struct cmsghdr *p_cmsg;
   
@@ -412,7 +412,7 @@ int recv_fd(int sockfd)
   
   p_fd=(int*)CMSG_DATA(p_cmsg);
   recvfd=*p_fd;
-  if (recvfd=-1) {
+  if (recvfd==-1) {
     ERR_EXIT("no passed fd");
   }
   return recvfd;
