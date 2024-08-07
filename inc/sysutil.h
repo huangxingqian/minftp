@@ -16,4 +16,8 @@ int connect_timeout(int fd, struct sockaddr_in *addr, socklen_t addrlen,unsigned
 ssize_t readline(int sockfd, void *buf, ssize_t maxline);
 int getlocalip(char *ip);
 
+void send_fd(int sockfd, int fd);
+int recv_fd(int sockfd);
+
+
 #endif

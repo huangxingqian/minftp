@@ -68,7 +68,6 @@ int tcp_server(const char *host, unsigned short port)
 	servaddr.sin_port = htons(port);
 
 	int on = 1;
-	if ((setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on))) < 0)
 		ERR_EXIT("setsockopt");
 
 	if (bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
@@ -342,4 +341,79 @@ int connect_timeout(int fd, struct sockaddr_in *addr, socklen_t addrlen,unsigned
 		deactivate_nonblock(fd);
 
 	return ret;
+}
+
+void send_fd(int sockfd, int fd)
+{
+  int ret;
+  struct msghdr msg;
+  struct cmsghdr *p_cmsg;
+  struct iovec vec;
+  char cmsgbuf[CMSG_SPACE(sizeof(fd))];
+  int *p_fds;
+  char sendchar=0;
+  msg.msg_control=cmsgbuf;
+  msg.msg_controllen=sizeof(cmsgbuf);
+  
+  p_cmsg=CMSG_FIRSTHDR(&msg);
+  p_cmsg->cmsg_level=SOL_SOCKET;
+  p_cmsg->cmsg_type=SCM_RIGTHS;
+  p_cmsg->cmsg_len=CMSG_LEN(sizeof(fd));
+  p_fds=(int*)CMSG_DATA(p_cmsg);
+  *p_fds=fd;
+  
+  msg.msg_name=NULL;
+  msg.msg_namelen=0;
+  msg.msg_iov=&vec;
+  msg.msg_iovlen=1;
+  msg.msg_flags=0;
+  
+  vec.iov_base=&sendchar;
+  vec.iov_len=sizeof(sendchar);
+  ret = sendmsg(sockfd, &msg, 0);
+  if (ret!=1) {
+    ERR_EXIT("sendmsg");
+  }
+}
+
+int recv_fd(int sockfd)
+{
+  int ret;
+  struct msghdr msg;
+  char recvchar=0;
+  struct iovec vec;
+  int recvfd;
+  char cmsgbuf[CMSG_SPACE(sizeof(readfd))];
+  int *p_fd;
+  struct cmsghdr *p_cmsg;
+  
+  vec.iov_base=&recvchar;
+  vec.iov_len=sizeof(recvchar);
+  
+  msg.msg_control=cmsgbuf;
+  msg.msg_controllen=sizeof(cmsgbuf);
+  msg.msg_name=NULL;
+  msg.msg_namelen=0;
+  msg.msg_iov=&vec;
+  msg.msg_iovlen=1;
+  msg.msg_flags=0;
+  
+  p_fd=(int*)CMSG_DATA(CMSG_FIRSTHDR(&msg));
+  *p_fd=-1;
+  ret = recvmsg(sockfd, &msg, 0);
+  if (ret!=1) {
+    ERR_EXIT("recvmsg");
+  }
+  
+  p_cmsg=CMSG_FIRSTHDR(&msg);
+  if (p_cmsg==NULL) {
+    ERR_EXIT("no passed fd");
+  }
+  
+  p_fd=(int*)CMSG_DATA(p_cmsg);
+  recvfd=*p_fd;
+  if (recvfd=-1) {
+    ERR_EXIT("no passed fd");
+  }
+  return recvfd;
 }

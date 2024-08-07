@@ -2,42 +2,27 @@
 #include "common.h"
 #include "privparent.h"
 #include "ftpproto.h"
+#include "privsock.h"
 
 void begin_session(session_t *sess)
 {
-    // struct passwd *pw = getpwnam("nobody");
-    // if (pw == NULL)
-    // {
-    //     return;
-    // }
+    priv_sock_init(sess);
+    pid_t pid
     
-    // if (setegid(pw->pw_gid) < 0)
-    //     ERR_EXIT("setegid");
-    // if (seteuid(pw->pw_uid) < 0)
-    //     ERR_EXIT("seteuid");
-    
-    int sockfd[2];
-    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockfd) < 0)
-        ERR_EXIT("socketpair");
-    
-    pid_t pid;
     pid = fork();
-
     if (pid < 0)
         ERR_EXIT("fork");
 
     if (pid == 0)
     {
         // ftp
-        close(sockfd[0]);
-        sess->child_fd = sockfd[1];
+        priv_sock_set_child_context(sess);
         handle_child(sess);
     }
     else
     {
         // nobody
-        close(sockfd[1]);
-        sess->child_fd = sockfd[0];
+        priv_sock_set_parent_context(sess);
         handle_parent(sess);
     }
 

@@ -93,6 +93,7 @@ void handle_child(session_t *sess)
                 {
                     ftp_reply(sess, 502, "Unimplement command.");
                 }
+                break;
             }
             
         }
@@ -240,6 +241,7 @@ int list_common(session_t *sess)
         }
         
         printf("%s",buf);
+        writen(see->data_fd,buf,strlen(buf));
     }
     closedir(dir);
     return 1;
@@ -328,7 +330,7 @@ static void do_port(session_t *sess)
 {
     unsigned int v[6] = {0};
     sscanf(sess->arg,"%u,%u,%u,%u,%u,%u",&v[0],&v[1],&v[2],&v[3],&v[4],&v[5]);
-    sess->port_addr = (struct sockaddr_in *)malloc(sizeof(struct sockaddr_in *));
+    sess->port_addr = (struct sockaddr_in *)malloc(sizeof(struct sockaddr_in));
     memset(sess->port_addr, 0, sizeof(struct sockaddr_in));
     sess->port_addr->sin_family = AF_INET;
     unsigned char *p = (unsigned char*)&sess->port_addr->sin_port;
@@ -430,7 +432,7 @@ int get_transfer_fd(session_t *sess)
       return 0;
     }
     
-    if (connect_timeout(fd, sess->port_addr, sizeof(sess->port_addr),tunable_connect_tineout) < 0) {
+    if (connect_timeout(fd, &sess->port_addr, sizeof(struct sockaddr_in),tunable_connect_tineout) < 0) {
       close(fd);
       return 0;
       
