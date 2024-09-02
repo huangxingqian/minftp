@@ -61,7 +61,7 @@ static void privop_pasv_accept(session_t *sess)
   close(sess->pasv_listen_fd);
   sess->pasv_listen_fd = -1;
   if (fd == -1) {
-    priv_sock_send_result(sess->child_fd, PRIV_SOCK_RESULT_BAD)
+    priv_sock_send_result(sess->child_fd, PRIV_SOCK_RESULT_BAD);
     return;
   }
   priv_sock_send_result(sess->child_fd, PRIV_SOCK_RESULT_OK);

@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
         
         NULL,-1,-1,
 
-        0,0
+        0,0,0,NULL
     };
     signal(SIGCHLD,SIG_IGN);
     int listenfd = tcp_server(NULL, 5188);
