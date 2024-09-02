@@ -77,7 +77,10 @@ ftpcmd_t ctrl_cmds[] =
     {"SIZE",do_size},
     {"STAT",do_stat},
     {"NOOP",do_noop},
-    {"HELP",do_help}
+    {"HELP",do_help},
+    {"STOR",do_help},
+    {"CWD",do_CWD}
+
 };
 
 void handle_child(session_t *sess)
@@ -396,7 +399,6 @@ int get_pasv_fd(session_t *sess)
 
 int get_transfer_fd(session_t *sess)
 {
-  int fd;
   int ret=1;
   if (!port_active(sess) && !pasv_active(sess))
   {
@@ -438,13 +440,13 @@ static void do_list(session_t *sess)
   ftp_reply(sess,226,"Directory send OK.");
 }
 
-static void do_nlst(session_t *sess)
+static void do_nlist(session_t *sess)
 {
   if (get_transfer_fd(sess) == 0) {
     ftp_reply(sess,425,"Use port or pasv frist");
     return;
   }
-  ftp_reply(sess,150,"Here comes the directory listing")qsort
+  ftp_reply(sess,150,"Here comes the directory listing");
   list_common(sess, 0);
   close(sess->data_fd);
   ftp_reply(sess,226,"Directory send OK.");
@@ -475,13 +477,13 @@ static void do_mkd(session_t *sess)
       return;
   }
   
-  char text[1024] = {0};
+  char text[4096] = {0};
   if (sess->arg[0] == '/') {
       sprintf(text, "%s created.", sess->arg);
   } else {
-     char dir[4096+1] = {0};
+     char dir[1024+1] = {0};
      getcwd(dir, 4096);
-     if (dir[str(dir) - 1] == '/') {
+     if (dir[strlen(dir) - 1] == '/') {
          sprintf(text, "%s%s created.", dir,sess->arg);
      } else {
          sprintf(text, "%s/%s created.", dir,sess->arg);
@@ -491,7 +493,7 @@ static void do_mkd(session_t *sess)
   
   ftp_reply(sess, 257, text);
 } 
-}
+
 static void do_rmd(session_t *sess)
 {
   if(rmdir(sess->arg) < 0) {

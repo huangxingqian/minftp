@@ -37,7 +37,7 @@ struct parseconf_uint_setting parseconf_uint_array[] =
     {"connect_tineout", &tunable_connect_timeout},
     {"idle_session_tineout", &tunable_idle_session_timeout},
     {"data_connection_tineout", &tunable_data_connection_timeout},
-    {"local_unask", &tunable_local_unask},
+    {"local_unask", &tunable_local_umask},
     {"upload_max_rate", &tunable_upload_max_rate},
     {"download_max_rate", &tunable_download_max_rate},
     {NULL, NULL}
