@@ -305,16 +305,16 @@ int connect_timeout(int fd, struct sockaddr_in *addr, socklen_t addrlen,unsigned
 	ret = connect(fd, (struct sockaddr*)addr, addrlen);
 	if (ret < 0 && errno == EINPROGRESS) {
 		fd_set connect_fdset;
-                FD_ZERO(&connect_fdset);
-                FD_SET(fd,&connect_fdset);
+    FD_ZERO(&connect_fdset);
+    FD_SET(fd,&connect_fdset);
 
-                struct timeval timeout;
-                timeout.tv_sec = wait_seconds;
-                timeout.tv_usec = 0;
-                do
-                {
-                        ret = select(fd+1,  NULL, &connect_fdset,NULL, &timeout);
-                } while(ret < 0 && errno == EINTR);
+    struct timeval timeout;
+    timeout.tv_sec = wait_seconds;
+    timeout.tv_usec = 0;
+    do
+    {
+      ret = select(fd+1,  NULL, &connect_fdset,NULL, &timeout);
+    } while(ret < 0 && errno == EINTR);
 
 		if (ret == 0) {
 			errno = ETIMEDOUT;
@@ -416,4 +416,103 @@ int recv_fd(int sockfd)
     ERR_EXIT("no passed fd");
   }
   return recvfd;
+}
+
+const char *statbuf_get_perms(struct stat *sbuf)
+{
+  static char perm[] = "----------";
+  perm[0] = '?';
+  mode_t mode = sbuf->st_mode;
+  switch (mode & S_IFMT)
+  {
+    case S_IFSOCK:
+      perm[0] = 's';
+      break;
+    case S_IFLNK:
+      perm[0] = 'l';
+      break;
+    case S_IFREG:
+      perm[0] = '-';
+      break;
+    case S_IFBLK:
+      perm[0] = 'b';
+      break;
+    case S_IFDIR:
+      perm[0] = 'd';
+      break;
+    case S_IFCHR:
+      perm[0] = 'c';
+      break;
+    case S_IFIFO:
+      perm[0] = 'p';
+      break;
+    }
+        
+    if (mode & S_IRUSR)
+    {
+      perm[1] = 'r';
+    }
+    if (mode & S_IWUSR)
+    {
+      perm[2] = 'w';
+    }
+    if (mode & S_IXUSR)
+    {
+      perm[3] = 'x';
+    }
+    if (mode & S_IRGRP)
+    {
+      perm[4] = 'r';
+    }
+    if (mode & S_IWGRP)
+    {
+      perm[5] = 'w';
+    }
+    if (mode & S_IXGRP)
+    {
+      perm[6] = 'x';
+    }
+    if (mode & S_IROTH)
+    {
+      perm[7] = 'r';
+    }
+    if (mode & S_IWOTH)
+    {
+      perm[8] = 'w';
+    }
+    if (mode & S_IXOTH)
+    {
+      perm[9] = 'x';
+    }
+    
+    if (mode & S_ISUID)
+    {
+      perm[3] = (perm[3] == 'x') ? ('s') : ('S');
+    }
+    if (mode & S_ISGID)
+    {
+      perm[6] = (perm[6] == 'x') ? ('s') : ('S');
+    }
+    if (mode & S_ISVTX)
+    {
+      perm[9] = (perm[6] == 'x') ? ('t') : ('T');
+    }
+    
+    return perm;
+}
+const char *statbuf_get_date(struct stat *sbuf)
+{
+  static char datebuf[64] = {0};
+  const char *p_date_format = "%b %e %H:%M";
+  struct timeval tv = {0};
+  gettimeofday(&tv, NULL);
+  time_t local_time = tv.tv_sec;
+  if(sbuf.st_mtime > local_time || (local_time - sbuf.st_mtime) > 60*60*24*182)
+  {
+    p_date_format = "%b %e %Y";
+  }
+
+  struct tm *p_tm = localtime(&local_time);
+  strftime(datebuf, sizeof(datebuf), p_date_format, p_tm);
+  return datebuf;
 }

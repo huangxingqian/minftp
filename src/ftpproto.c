@@ -4,9 +4,10 @@
 #include "str.h"
 #include "common.h"
 #include "tunable.h"
+#include "privsock.h"
 
 
-int list_common(session_t *sess);
+int list_common(session_t *sess, int detail);
 static void ftp_reply(session_t *sess, int status,  const char *text);
 int port_active(session_t *sess);
 int pasv_active(session_t *sess);
@@ -107,8 +108,9 @@ void handle_child(session_t *sess)
     
 }
 
-int list_common(session_t *sess)
+int list_common(session_t *sess, int detail)
 {
+    int off = 0;
     DIR *dir = opendir(".");
     if(dir == NULL)
     {
@@ -118,126 +120,39 @@ int list_common(session_t *sess)
     
     struct dirent *dt = NULL;
     struct stat sbuf = {0};
+    char buf[1024] = {0};
+    
     while((dt = readdir(dir)) != NULL)
     {
         if(lstat(dt->d_name, &sbuf) < 0 )
         {
             continue;
         }
-        if(dt->d_name == NULL)
-        {
-            continue;
-        }
-
-        if (strcmp(dt->d_name,".") == 0 || strcmp(dt->d_name,"..") == 0)
-        {
-            continue;
-        }
         
-        char buf[1024] = {0};
-        int off = 0;
-        char perm[] = "----------";
-        perm[0] = '?';
-        mode_t mode = sbuf.st_mode;
-        switch (mode & S_IFMT)
-        {
-            case S_IFSOCK:
-                perm[0] = 's';
-                break;
-            case S_IFLNK:
-                perm[0] = 'l';
-                break;
-            case S_IFREG:
-                perm[0] = '-';
-                break;
-            case S_IFBLK:
-                perm[0] = 'b';
-                break;
-            case S_IFDIR:
-                perm[0] = 'd';
-                break;
-            case S_IFCHR:
-                perm[0] = 'c';
-                break;
-            case S_IFIFO:
-                perm[0] = 'p';
-                break;
+        if (dt->d_name[0] == '.') {
+            continue
         }
+        if (detail) {
+            const char perm = statbuf_get_perms(&sbuf);
+            off = 0;
+            off += sprintf(buf + off, "%s ", perm);
+            off += sprintf(buf + off, "%3ld %-8d %-8d ",sbuf.st_nlink, sbuf.st_uid, sbuf.st_gid);
+            off += sprintf(buf + off, "%8lu ", (unsigned long)sbuf.st_size);
         
-        if (mode & S_IRUSR)
-        {
-            perm[1] = 'r';
-        }
-        if (mode & S_IWUSR)
-        {
-            perm[2] = 'w';
-        }
-        if (mode & S_IXUSR)
-        {
-            perm[3] = 'x';
-        }
+            const char = statbuf_get_date(&perm);
+            off += sprintf(buf + off, "%s ", datebuf);
         
-        if (mode & S_IRGRP)
-        {
-            perm[4] = 'r';
-        }
-        if (mode & S_IWGRP)
-        {
-            perm[5] = 'w';
-        }
-        if (mode & S_IXGRP)
-        {
-            perm[6] = 'x';
-        }
-        
-        if (mode & S_IROTH)
-        {
-            perm[7] = 'r';
-        }
-        if (mode & S_IWOTH)
-        {
-            perm[8] = 'w';
-        }
-        if (mode & S_IXOTH)
-        {
-            perm[9] = 'x';
-        }
-        if (mode & S_ISUID)
-        {
-            perm[3] = (perm[3] == 'x') ? ('s') : ('S');
-        }
-        if (mode & S_ISGID)
-        {
-            perm[6] = (perm[6] == 'x') ? ('s') : ('S');
-        }
-        if (mode & S_ISVTX)
-        {
-            perm[9] = (perm[6] == 'x') ? ('t') : ('T');
-        }
-        off += sprintf(buf + off, "%s ", perm);
-        off += sprintf(buf + off, "%3ld %-8d %-8d ",sbuf.st_nlink, sbuf.st_uid, sbuf.st_gid);
-        off += sprintf(buf + off, "%8lu ", (unsigned long)sbuf.st_size);
-        const char *p_date_format = "%b %e %H:%M";
-        struct timeval tv = {0};
-        gettimeofday(&tv, NULL);
-        time_t local_time = tv.tv_sec;
-        if(sbuf.st_mtime > local_time || (local_time - sbuf.st_mtime) > 60*60*24*182)
-        {
-            p_date_format = "%b %e %Y";
-        }
-        char datebuf[64] = {0};
-        struct tm *p_tm = localtime(&local_time);
-        strftime(datebuf, sizeof(datebuf), p_date_format, p_tm);
-        off += sprintf(buf + off, "%s ", datebuf);
-        if (S_ISLNK(mode))
-        {
-            char tmp[124] = {0};
-            readlink(dt->d_name, tmp, sizeof(tmp));
-            sprintf(buf + off, "%s -> %s\r\n", dt->d_name, tmp);
-        }
-        else
-        {
-            sprintf(buf + off,"%s\r\n", dt->d_name);
+            if (S_ISLNK(mode))
+            {
+                char tmp[124] = {0};
+                readlink(dt->d_name, tmp, sizeof(tmp));
+                sprintf(buf + off, "%s -> %s\r\n", dt->d_name, tmp);
+            } else
+            {
+              sprintf(buf + off,"%s\r\n", dt->d_name);
+            }
+        } else {
+          sprintf(buf, "%s\r\n", dt->d_name);
         }
         
         printf("%s",buf);
@@ -319,6 +234,8 @@ static void do_syst(session_t *sess)
 
 static void do_cwd(session_t *sess)
 {
+  chdir(sess->arg);
+  ftp_reply(sess, 250,"Directory successful changed.");
 }
 static void do_cdup(session_t *sess)
 {
@@ -348,14 +265,10 @@ static void do_pasv(session_t *sess)
 {
   char ip[4] = {0};
   getlocalip(ip);
-  sess->pasv_listen_fd = tcp_server(ip,0);
-  struct sockaddr_in addr;
-  socklen_t addrlen = sizeof(addr);
-  if (getsockname(sess->pasv_listen_fd, (struct sockaddr*)&addr,&addrlen) < 0) {
-    
-    ERR_EXIT("getsockname");
-  }
-  unsigned short port = ntohs(addr.sin_port);
+  
+  priv_sock_send_cmd(sess->child_fd,PRIV_SOCK_PRIV_LISTEN);
+  unsigned short port = priv_sock_get_int(sess->child_fd);
+  
   unsigned int v[4];
   sscanf(ip,"%u.%u.%u.%u",&v[0],&v[1],&v[3],&v[4]);
   char text[1024] = {0};
@@ -407,7 +320,10 @@ int port_active(session_t *sess)
 
 int pasv_active(session_t *sess)
 {
-  if (sess->pasv_listen_fd != -1) {
+  int active;
+  priv_sock_send_cmd(sess->child_fd, PRIV_SOCK_PRIV_ACTIVE);
+  active = priv_sock_get_int(sess->child_fd);
+  if (active) {
     if (port_active(sess)) {
       fprintf(stderr,"botn port an pasv are active.");
       exit(EXIT_FAILURE);
@@ -421,10 +337,22 @@ int get_port_fd(session_t *sess)
 {
   priv_sock_send_cmd(sess->child_fd, PRIV_SOCK_GET_DATA_SOCK);
   unsigned short port = ntohs(sess->port_addr->sin_port);
-  char *ip = inet_aton(sess->port_addr->sin_addr);
+  char *ip = inet_ntoa(sess->port_addr->sin_addr);
   priv_sock_send_int(sess->child_fd, (int)port);
-  priv_sock_send_buf(sess->child_fd，ip,sizeof(ip));
+  priv_sock_send_buf(sess->child_fd, ip, sizeof(ip));
   char res = priv_sock_get_result(sess->child_fd);
+  if (res == PRIV_SOCK_RESULT_BAD) {
+    return 0;
+  } else if (res == PRIV_SOCK_RESULT_OK) {
+    sess->data_fd = priv_sock_recv_fd(sess->child_fd);
+  }
+  return 1;
+}
+
+int get_pasv_fd(session_t sess)
+{
+  priv_sock_send_cmd(sess->child_fd, PRIV_SOCK_PRIV_ACCEPT);
+  int res = priv_sock_get_result(sess->child_fd);
   if (res == PRIV_SOCK_RESULT_BAD) {
     return 0;
   } else if (res == PRIV_SOCK_RESULT_OK) {
@@ -449,18 +377,15 @@ int get_transfer_fd(session_t *sess)
     }
   }
   
+  if(pasv_active(sess)) {
+    if (get_pasv_fd() == 0) {
+      ret = 0;
+    }
+  }
+  
   if (sess->port_addr) {
     free(sess->port_addr);
     sess->port_addr = NULL;
-  }
-  
-  if(pasv_active(sess)) {
-    int fd = accept_timeout(sess->pasv_listen_fd,NULL,tunable_accept_tineout);
-    if (fd == -1) {
-      close(sess->pasv_listen_fd);
-      return 0;
-    }
-    sess->data_fd = fd;
   }
   
   return ret;
@@ -475,13 +400,24 @@ static void do_list(session_t *sess)
   }
   ftp_reply(sess,150,"Here comes the directory listing");
   
-  list_common(sess);
+  list_common(sess, 1);
   close(sess->data_fd);
   ftp_reply(sess,226,"Directory send OK.");
 }
+
 static void do_nlst(session_t *sess)
 {
+  if (get_transfer_fd(sess) == 0) {
+    ftp_reply(sess,425,"Use port or pasv frist");
+    return;
+  }
+  ftp_reply(sess,150,"Here comes the directory listing");
+  
+  list_common(sess, 0);
+  close(sess->data_fd);
+  ftp_reply(sess,226,"Directory send OK.");
 }
+
 static void do_rest(session_t *sess)
 {
 }

@@ -39,7 +39,7 @@ void priv_sock_send_cmd(int fd, char cmd)
   ret = writen(fd, &cmd, sizeof(cmd));
   if (ret!= sizeof(cmd)) {
     fprintf(stderr,"priv_sock_send_cmd\n");
-    exit(EXIT_FAILUSRE);
+    exit(EXIT_FAILURE);
   }
 }
 

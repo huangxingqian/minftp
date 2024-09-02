@@ -19,5 +19,7 @@ int getlocalip(char *ip);
 void send_fd(int sockfd, int fd);
 int recv_fd(int sockfd);
 
+const char *statbuf_get_perms(struct stat *sbuf);
+const char *statbuf_get_date(struct stat *sbuf);
 
 #endif

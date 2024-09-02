@@ -27,6 +27,8 @@
 #include <dirent.h>
 #include <sys/time.h>
 #include <signal.h>
+#include <linux/capability.h>
+#include <sys/syscall.h>
 
 #define MAX_COMMAND_LINE 1024
 #define MAX_COMMAND 32
