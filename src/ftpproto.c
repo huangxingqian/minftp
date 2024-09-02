@@ -27,7 +27,7 @@ static void do_retr(session_t *sess);
 static void do_stor(session_t *sess);
 static void do_appe(session_t *sess);
 static void do_list(session_t *sess);
-static void do_nlst(session_t *sess);
+static void do_nlist(session_t *sess);
 static void do_rest(session_t *sess);
 static void do_abor(session_t *sess);
 static void do_pwd(session_t *sess);
@@ -78,8 +78,8 @@ ftpcmd_t ctrl_cmds[] =
     {"STAT",do_stat},
     {"NOOP",do_noop},
     {"HELP",do_help},
-    {"STOR",do_help},
-    {"CWD",do_CWD}
+    {"STOR",do_stor},
+    {"CWD",do_cwd}
 
 };
 
