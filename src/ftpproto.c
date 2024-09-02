@@ -130,19 +130,19 @@ int list_common(session_t *sess, int detail)
         }
         
         if (dt->d_name[0] == '.') {
-            continue
+            continue;
         }
         if (detail) {
-            const char perm = statbuf_get_perms(&sbuf);
+            const char *perm = statbuf_get_perms(&sbuf);
             off = 0;
             off += sprintf(buf + off, "%s ", perm);
             off += sprintf(buf + off, "%3ld %-8d %-8d ",sbuf.st_nlink, sbuf.st_uid, sbuf.st_gid);
             off += sprintf(buf + off, "%8lu ", (unsigned long)sbuf.st_size);
         
-            const char = statbuf_get_date(&perm);
+            const char *datebuf= statbuf_get_date(&sbuf);
             off += sprintf(buf + off, "%s ", datebuf);
         
-            if (S_ISLNK(mode))
+            if (S_ISLNK(sbuf.st_mode))
             {
                 char tmp[124] = {0};
                 readlink(dt->d_name, tmp, sizeof(tmp));
@@ -349,7 +349,7 @@ int get_port_fd(session_t *sess)
   return 1;
 }
 
-int get_pasv_fd(session_t sess)
+int get_pasv_fd(session_t *sess)
 {
   priv_sock_send_cmd(sess->child_fd, PRIV_SOCK_PRIV_ACCEPT);
   int res = priv_sock_get_result(sess->child_fd);

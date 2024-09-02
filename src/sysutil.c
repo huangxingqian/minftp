@@ -67,9 +67,10 @@ int tcp_server(const char *host, unsigned short port)
 
 	servaddr.sin_port = htons(port);
 
-	int on = 1;
-		ERR_EXIT("setsockopt");
-
+  int on = 1;
+  if ((setsockopt(listenfd,SOL_SOCKET,SO_REUSEADDR,(const char*)&on,sizeof(on))) < 0)
+    ERR_EXIT("sersockopt");
+    
 	if (bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
 		ERR_EXIT("bind");
 	
@@ -507,7 +508,7 @@ const char *statbuf_get_date(struct stat *sbuf)
   struct timeval tv = {0};
   gettimeofday(&tv, NULL);
   time_t local_time = tv.tv_sec;
-  if(sbuf.st_mtime > local_time || (local_time - sbuf.st_mtime) > 60*60*24*182)
+  if(sbuf->st_mtime > local_time || (local_time - sbuf->st_mtime) > 60*60*24*182)
   {
     p_date_format = "%b %e %Y";
   }

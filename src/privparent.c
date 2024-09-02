@@ -1,7 +1,8 @@
 #include "privparent.h"
 #include "session.h"
 #include "privsock.h"
-#inckude "sysutil.h"
+#include "sysutil.h"
+#include "tunable.h"
 
 static void privop_pasv_get_data_sock(session_t *sess)
 {
@@ -52,18 +53,18 @@ static void privop_pasv_listen(session_t *sess)
     ERR_EXIT("getsockname");
   }
   unsigned short port = ntohs(addr.sin_port);
-  pasv_sock_send_int(sess->parent_fd,(int)port);
+  priv_sock_send_int(sess->parent_fd,(int)port);
 }
 static void privop_pasv_accept(session_t *sess)
 {
-  int fd = accept_timeout(sess->pasv_listen_fd,NULL,tunable_accept_tineout);
+  int fd = accept_timeout(sess->pasv_listen_fd,NULL,tunable_accept_timeout);
   close(sess->pasv_listen_fd);
   sess->pasv_listen_fd = -1;
   if (fd == -1) {
-    priv_sock_send_result(sess->child, PRIV_SOCK_RESULT_BAD)
+    priv_sock_send_result(sess->child_fd, PRIV_SOCK_RESULT_BAD)
     return;
   }
-  priv_sock_send_result(sess->child, PRIV_SOCK_RESULT_OK)
+  priv_sock_send_result(sess->child_fd, PRIV_SOCK_RESULT_OK);
   priv_sock_send_fd(sess->parent_fd, fd);
 }
 
@@ -114,7 +115,7 @@ void handle_parent(session_t *sess)
           privop_pasv_active(sess);
           break;
         case PRIV_SOCK_PRIV_LISTEN:
-          privop_pasv_active(sess);
+          privop_pasv_listen(sess);
           break;
         case PRIV_SOCK_PRIV_ACCEPT:
           privop_pasv_accept(sess);
