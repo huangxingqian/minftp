@@ -4,11 +4,15 @@
 int getlocalip(char *ip)
 {
     char host[100] = {0};
-    if (gethostname(host,sizeof(host)) < 0)
+    if (gethostname(host,sizeof(host)) < 0) {
+        printf("DEBUG: gethostname failed.");
         return -1;
+    }
     struct hostent *hp;
-    if ((hp = gethostbyname(host)) == NULL)  
+    if ((hp = gethostbyname(host)) == NULL) {
+        printf("DEBUG: gethostbyname failed.");
         return -1;
+    }
     
     strcpy(ip, inet_ntoa(*(struct in_addr*)hp->h_addr));
     return 0;
@@ -16,24 +20,26 @@ int getlocalip(char *ip)
 
 int tcp_client(unsigned short port)
 {
-  int sockfd;
-  if ((sockfd = socket(AF_INET,SOCK_STREAM,0)) < 0) {
-    ERR_EXIT("client socket");
-  }
-  if (port > 0) {
-    int on = 1;
-    if ((setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,(const char*)&on,sizeof(on))) < 0)
-      ERR_EXIT("sersockopt");
+    int sockfd;
+    if ((sockfd = socket(AF_INET,SOCK_STREAM,0)) < 0) {
+        ERR_EXIT("client socket");
+    }
+    if (port > 0) {
+        int on = 1;
+        if ((setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,(const char*)&on,sizeof(on))) < 0)
+        ERR_EXIT("sersockopt");
       
-      struct sockaddr_in localaddr;
-      localaddr.sin_family = AF_INET;
-      localaddr.sin_port = htons(port);
-      localaddr.sin_addr.s_addr = inet_addr("10.58.14.133");
+        struct sockaddr_in localaddr;
+        localaddr.sin_family = AF_INET;
+        localaddr.sin_port = htons(port);
+        localaddr.sin_addr.s_addr = inet_addr("10.58.14.133");
       
-      if(bind(sockfd,(struct sockaddr*)&localaddr,sizeof(localaddr)) < 0)
-        ERR_EXIT("bind");
-  }
-  return sockfd;
+        if(bind(sockfd,(struct sockaddr*)&localaddr,sizeof(localaddr)) < 0)
+            ERR_EXIT("bind");
+        
+    }
+    
+    return sockfd;
 }
 /**
  * 
@@ -67,11 +73,11 @@ int tcp_server(const char *host, unsigned short port)
 
 	servaddr.sin_port = htons(port);
 
-  int on = 1;
-  if ((setsockopt(listenfd,SOL_SOCKET,SO_REUSEADDR,(const char*)&on,sizeof(on))) < 0)
-    ERR_EXIT("sersockopt");
+    int on = 1;
+    if ((setsockopt(listenfd,SOL_SOCKET,SO_REUSEADDR,(const char*)&on,sizeof(on))) < 0)
+        ERR_EXIT("setsockopt");
     
-	if (bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
+    if (bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
 		ERR_EXIT("bind");
 	
 	if (listen(listenfd, SOMAXCONN) < 0)
@@ -422,6 +428,7 @@ int recv_fd(int sockfd)
 const char *statbuf_get_perms(struct stat *sbuf)
 {
   static char perm[] = "----------";
+  strcpy(perm,"----------");
   perm[0] = '?';
   mode_t mode = sbuf->st_mode;
   switch (mode & S_IFMT)
@@ -510,10 +517,10 @@ const char *statbuf_get_date(struct stat *sbuf)
   time_t local_time = tv.tv_sec;
   if(sbuf->st_mtime > local_time || (local_time - sbuf->st_mtime) > 60*60*24*182)
   {
-    p_date_format = "%b %e %Y";
+    p_date_format = "%b %e %Y ";
   }
 
-  struct tm *p_tm = localtime(&local_time);
+  struct tm *p_tm = localtime(&sbuf->st_mtime);
   strftime(datebuf, sizeof(datebuf), p_date_format, p_tm);
   return datebuf;
 }

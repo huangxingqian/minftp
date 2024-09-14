@@ -48,7 +48,7 @@ int priv_sock_get_cmd(int fd)
   char cmd;
   int ret;
   ret = readn(fd, &cmd, sizeof(cmd));
-  if (ret!=sizeof(cmd)) {
+  if (ret != sizeof(cmd)) {
     fprintf(stderr,"priv_sock_get_cmd error\n");
     exit(EXIT_FAILURE);
   }
@@ -59,7 +59,7 @@ void priv_sock_send_result(int fd, char res)
 {
   int ret;
   ret = writen(fd, &res, sizeof(res));
-  if (ret!= sizeof(res)) {
+  if (ret != sizeof(res)) {
     fprintf(stderr,"priv_sock_send_result error\n");
     exit(EXIT_FAILURE);
   }
@@ -70,7 +70,7 @@ int priv_sock_get_result(int fd)
   char res;
   int ret;
   ret = readn(fd, &res, sizeof(res));
-  if (ret!=sizeof(res)) {
+  if (ret != sizeof(res)) {
     fprintf(stderr,"priv_sock_get_reult error\n");
     exit(EXIT_FAILURE);
   }
@@ -81,7 +81,7 @@ void priv_sock_send_int(int fd, int the_int)
 {
   int ret;
   ret = writen(fd, &the_int, sizeof(the_int));
-  if (ret!= sizeof(the_int)) {
+  if (ret != sizeof(the_int)) {
     fprintf(stderr,"priv_sock_send_int\n");
     exit(EXIT_FAILURE);
   }
@@ -101,7 +101,7 @@ void priv_sock_send_buf(int fd, char *buf, unsigned int len)
 {
   priv_sock_send_int(fd, (int)len);
   int ret = writen(fd, buf, len);
-  if (ret == (int)len) {
+  if (ret != (int)len) {
     fprintf(stderr,"priv_sock_send_buf error\n");
     exit(EXIT_FAILURE);
   }

@@ -102,6 +102,7 @@ void handle_child(session_t *sess)
             exit(EXIT_SUCCESS);
         str_trim_crlf(sess->cmdline);
         str_split(sess->cmdline, sess->cmd, sess->arg, ' ');
+        printf("DEBUG: cmd = %s, arg = %s.", sess->cmd, sess->arg);
         int i;
         int size = sizeof(ctrl_cmds) / sizeof(ctrl_cmds[0]);
         for (i = 0; i < size; i++)
@@ -114,6 +115,7 @@ void handle_child(session_t *sess)
                 }
                 else
                 {
+                    printf("DEBUG: Unimplement command. cmd = %s.", sess->cmd);
                     ftp_reply(sess, 502, "Unimplement command.");
                 }
                 break;
@@ -123,6 +125,7 @@ void handle_child(session_t *sess)
 
         if (i == size)
         {
+            printf("DEBUG: Unknown command. cmd = %s.", sess->cmd);
             ftp_reply(sess, 500, "unknown command.");
         }
         
@@ -136,6 +139,7 @@ int list_common(session_t *sess, int detail)
     DIR *dir = opendir(".");
     if(dir == NULL)
     {
+        printf("DEBUG: Directory listing is NULL.");
         return 0;
     }
     
@@ -154,6 +158,7 @@ int list_common(session_t *sess, int detail)
         if (dt->d_name[0] == '.') {
             continue;
         }
+        
         if (detail) {
             const char *perm = statbuf_get_perms(&sbuf);
             off = 0;
@@ -191,18 +196,18 @@ static void ftp_reply(session_t *sess, int status, const char *text)
     writen(sess->ctrl_fd, buf, strlen(buf));
 }
 
-  static void ftp_lreply(session_t *sess, int status, const char *text)
- {
-     char buf[1024] = {0};
-     sprintf(buf, "%d-%s\r\n",status, text);
-     writen(sess->ctrl_fd, buf, strlen(buf));
- }
+static void ftp_lreply(session_t *sess, int status, const char *text)
+{
+    char buf[1024] = {0};
+    sprintf(buf, "%d-%s\r\n",status, text);
+    writen(sess->ctrl_fd, buf, strlen(buf));
+}
 
 static void do_user(session_t *sess)
 {
     struct passwd *pw = getpwnam(sess->arg);
-    if (pw == NULL)
-    {
+    if (pw == NULL) {
+        printf("DEBUG: Unknown User. User name = %s.", sess->arg);
         ftp_reply(sess, 530, "Login incorrect");
         return;
     }
@@ -222,6 +227,7 @@ static void do_pass(session_t *sess)
     struct spwd *sp = getspnam(pw->pw_name);
     if (sp == NULL)
     {
+        printf("DEBUG: Get spwd failed. pw_name = %s.", pw_name);
         ftp_reply(sess, 530, "Login incorrect");
         return;
     }
@@ -229,14 +235,16 @@ static void do_pass(session_t *sess)
     char *encrypted_pass = crypt(sess->arg, sp->sp_pwdp);
     if (strcmp(encrypted_pass, sp->sp_pwdp) != 0)
     {
+        printf("DEBUG: Password camper failed.");
         ftp_reply(sess, 530, "Login incorrect");
         return;
     }
     
     umask(tunable_local_umask);
-    setgid(pw->pw_gid);
-    setuid(pw->pw_uid);
-    chdir(pw->pw_dir);
+    //部分用户权限过低，暂时屏蔽
+    //setgid(pw->pw_gid);
+    //setuid(pw->pw_uid);
+    //chdir(pw->pw_dir);
     
     ftp_reply(sess, 230, "Login successful");
 }
@@ -257,35 +265,40 @@ static void do_feat(session_t *sess)
 
 static void do_syst(session_t *sess)
 {
-   ftp_reply(sess, 215, "SYS TYPE");
+    ftp_reply(sess, 215, "SYS TYPE");
 }
 
 static void do_cwd(session_t *sess)
 {
-  if(chdir(sess->arg) < 0) {
-      ftp_reply(sess, 550, "Filled to change directory.");
-      return;
-  }
-  ftp_reply(sess, 250, "Directory successful changed.");
+    //依据arg改变目录
+    if(chdir(sess->arg) < 0) {
+        ftp_reply(sess, 550, "Filled to change directory.");
+        return;
+    }
+    ftp_reply(sess, 250, "Directory successful changed.");
 }
 static void do_cdup(session_t *sess)
 {
-  if(chdir("..") < 0) {
-      ftp_reply(sess, 550, "Filled to change directory.");
-      return;
-  }
-  ftp_reply(sess, 250, "Directory successful changed.");
+    //返回上一层目录
+    if(chdir("..") < 0) {
+        ftp_reply(sess, 550, "Filled to change directory.");
+        return;
+    }
+    ftp_reply(sess, 250, "Directory successful changed.");
 }
 static void do_quit(session_t *sess)
 {
 }
 static void do_port(session_t *sess)
 {
+    //获取主动模式发送IP和PORT
     unsigned int v[6] = {0};
     sscanf(sess->arg,"%u,%u,%u,%u,%u,%u",&v[0],&v[1],&v[2],&v[3],&v[4],&v[5]);
     sess->port_addr = (struct sockaddr_in *)malloc(sizeof(struct sockaddr_in));
     memset(sess->port_addr, 0, sizeof(struct sockaddr_in));
     sess->port_addr->sin_family = AF_INET;
+    //网络字节序使用大端字节序
+    //数据MSB存在低地址内存处
     unsigned char *p = (unsigned char*)&sess->port_addr->sin_port;
     p[0] = v[4];
     p[1] = v[5];
@@ -300,7 +313,8 @@ static void do_port(session_t *sess)
 static void do_pasv(session_t *sess)
 {
   char ip[4] = {0};
-  getlocalip(ip);
+  
+  //getlocalip(ip);
   
   priv_sock_send_cmd(sess->child_fd,PRIV_SOCK_PRIV_LISTEN);
   unsigned short port = priv_sock_get_int(sess->child_fd);
@@ -349,6 +363,8 @@ int port_active(session_t *sess)
   if (sess->port_addr != NULL) {
     if (pasv_active(sess))
       return 0;
+      
+    printf("DEBUG: Enter port mode.");
     return 1;
   }
   return 0;
@@ -375,9 +391,10 @@ int get_port_fd(session_t *sess)
   unsigned short port = ntohs(sess->port_addr->sin_port);
   char *ip = inet_ntoa(sess->port_addr->sin_addr);
   priv_sock_send_int(sess->child_fd, (int)port);
-  priv_sock_send_buf(sess->child_fd, ip, sizeof(ip));
+  priv_sock_send_buf(sess->child_fd, ip, strlen(ip));
   char res = priv_sock_get_result(sess->child_fd);
   if (res == PRIV_SOCK_RESULT_BAD) {
+    printf("ERROR: command PRIV_SOCK_GET_DATA_SOCK execute failed.");
     return 0;
   } else if (res == PRIV_SOCK_RESULT_OK) {
     sess->data_fd = priv_sock_recv_fd(sess->child_fd);
@@ -390,6 +407,7 @@ int get_pasv_fd(session_t *sess)
   priv_sock_send_cmd(sess->child_fd, PRIV_SOCK_PRIV_ACCEPT);
   int res = priv_sock_get_result(sess->child_fd);
   if (res == PRIV_SOCK_RESULT_BAD) {
+    printf("ERROR: command PRIV_SOCK_PRIV_ACCEPT execute failed.");
     return 0;
   } else if (res == PRIV_SOCK_RESULT_OK) {
     sess->data_fd = priv_sock_recv_fd(sess->child_fd);

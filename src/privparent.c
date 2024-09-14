@@ -43,17 +43,17 @@ static void privop_pasv_active(session_t *sess)
 }
 static void privop_pasv_listen(session_t *sess)
 {
-  char ip[4] = {0};
-  getlocalip(ip);
-  sess->pasv_listen_fd = tcp_server(ip,0);
-  struct sockaddr_in addr;
-  socklen_t addrlen = sizeof(addr);
-  if (getsockname(sess->pasv_listen_fd, (struct sockaddr*)&addr,&addrlen) < 0) {
+    char ip[4] = {0};
+    getlocalip(ip);
+    sess->pasv_listen_fd = tcp_server(ip,0);
+    struct sockaddr_in addr;
+    socklen_t addrlen = sizeof(addr);
+    if (getsockname(sess->pasv_listen_fd, (struct sockaddr*)&addr,&addrlen) < 0) {
     
-    ERR_EXIT("getsockname");
-  }
-  unsigned short port = ntohs(addr.sin_port);
-  priv_sock_send_int(sess->parent_fd,(int)port);
+        ERR_EXIT("getsockname");
+    }
+    unsigned short port = ntohs(addr.sin_port);
+    priv_sock_send_int(sess->parent_fd,(int)port);
 }
 static void privop_pasv_accept(session_t *sess)
 {
@@ -105,24 +105,27 @@ void handle_parent(session_t *sess)
     char cmd;
     minimize_privilege();
     while (1) {
-      cmd = priv_sock_get_cmd(sess->parent_fd);
+        cmd = priv_sock_get_cmd(sess->parent_fd);
       
       switch (cmd) {
         case PRIV_SOCK_GET_DATA_SOCK:
-          privop_pasv_get_data_sock(sess);
-          break;
+            printf("receive cmd: PRIV_SOCK_GET_DATA_SOCK.");
+            privop_pasv_get_data_sock(sess);
+            break;
         case PRIV_SOCK_PRIV_ACTIVE:
+          printf("receive cmd: PRIV_SOCK_PRVI_ACTIVE.");
           privop_pasv_active(sess);
           break;
         case PRIV_SOCK_PRIV_LISTEN:
-          privop_pasv_listen(sess);
-          break;
+            printf("receive cmd: PRIV_SOCK_PRVI_LISTEN.");
+            privop_pasv_listen(sess);
+            break;
         case PRIV_SOCK_PRIV_ACCEPT:
-          privop_pasv_accept(sess);
-          break;
-          
+            printf("receive cmd: PRIV_SOCK_PRVI_ACCEPT.");
+            privop_pasv_accept(sess);
+            break;
         default:
-          break;
+            break;
       }
     }
 }
