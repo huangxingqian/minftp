@@ -350,6 +350,76 @@ static void do_node(session_t *sess)
 }
 static void do_retr(session_t *sess)
 {
+    if (get_transfer_fd(sess) == 0) {
+        ftp_reply(sess,425,"Use port or pasv frist");
+        return;
+    }
+    
+    //打开文件
+    int fd = open(sess->arg, O_RDONLY);
+    if (fd < 0) {
+        ftp_reply(sess, 550,"Failed to open.file.");
+        return;
+    }
+    
+    //加读的锁
+    int ret;
+    ret = local_file_read(fd);
+    if (ret == -1) {
+        ftp_reply(sess, 550,"Failed to open.file.");
+        return;
+    }
+    
+    //判断是否为普通文件
+    struct stat sbuf;
+    ret = fstat(fd, &setbuf)
+    if (!S_ISREG(sbuf.st_mode)) {
+        ftp_reply(sess, 550,"Failed to open.file.");
+        return;
+    }
+    char text[1024] = {0};
+    if (sess->is_ascii) {
+        sprintf(text, "Opening ASCII mode data connection for %s (%lld bytes)",
+            sess->arg, (long long)sbuf.st_size);
+    }
+    else {
+        sprintf(text, "Opening BINARY mode data connection for %s (%lld bytes)",
+            sess->arg, (long long)sbuf.st_size);
+    }
+    
+    ftp_reply(sess, 150, text);
+    
+    //下载文件
+    char buf[4096] = {0};
+    int flag = 0;
+    while (1) {
+        ret = readn(fd, buf, sizeof(buf));
+        if (ret == -1) {
+            if (errno == EINTR) {
+                continue;
+            } else {
+                flag = 1;
+                break;
+            }
+        } else if (ret == 0) {
+            flag = 0;
+            break;
+        }
+        
+        if (writen(sess->data_fd, buf, ret) != ret) {
+            break;
+            flag = 2;
+        }
+    }
+    close(sess->data_fd);
+    sess->data_fd = -1;
+    if (flag == 0 ) {
+        ftp_reply(sess, 226,"Transfer complete.");
+    } else if (flag == 1) {
+        ftp_reply(sess, 451,"Failure reading form local file.");
+    } else if (flag == 2) {
+        ftp_reply(sess, 426,"Failure writing to network stream.");
+    }
 }
 static void do_stor(session_t *sess)
 {

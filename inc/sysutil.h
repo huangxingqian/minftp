@@ -21,5 +21,6 @@ int recv_fd(int sockfd);
 
 const char *statbuf_get_perms(struct stat *sbuf);
 const char *statbuf_get_date(struct stat *sbuf);
+int local_file_read(int fd);
 
 #endif
