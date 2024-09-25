@@ -11,6 +11,7 @@ int list_common(session_t *sess, int detail);
 static void ftp_reply(session_t *sess, int status,  const char *text);
 int port_active(session_t *sess);
 int pasv_active(session_t *sess);
+int get_transfer_fd(session_t *sess);
 static void do_user(session_t *sess);
 static void do_pass(session_t *sess);
 static void do_feat(session_t *sess);
@@ -373,7 +374,7 @@ static void do_retr(session_t *sess)
     
     //判断是否为普通文件
     struct stat sbuf;
-    ret = fstat(fd, &setbuf);
+    ret = fstat(fd, &sbuf);
     if (!S_ISREG(sbuf.st_mode)) {
         ftp_reply(sess, 550,"Failed to open file.");
         return;
@@ -387,7 +388,7 @@ static void do_retr(session_t *sess)
         }
     }
     
-    char text[1024] = {0};
+    char text[2048] = {0};
     if (sess->is_ascii) {
         sprintf(text, "Opening ASCII mode data connection for %s (%lld bytes)",
             sess->arg, (long long)sbuf.st_size);
