@@ -5,12 +5,12 @@ int getlocalip(char *ip)
 {
     char host[100] = {0};
     if (gethostname(host,sizeof(host)) < 0) {
-        printf("DEBUG: gethostname failed.");
+        printf("DEBUG: gethostname failed.\n");
         return -1;
     }
     struct hostent *hp;
     if ((hp = gethostbyname(host)) == NULL) {
-        printf("DEBUG: gethostbyname failed.");
+        printf("DEBUG: gethostbyname failed.\n");
         return -1;
     }
     

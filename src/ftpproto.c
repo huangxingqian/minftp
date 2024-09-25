@@ -103,7 +103,7 @@ void handle_child(session_t *sess)
             exit(EXIT_SUCCESS);
         str_trim_crlf(sess->cmdline);
         str_split(sess->cmdline, sess->cmd, sess->arg, ' ');
-        printf("DEBUG: cmd = %s, arg = %s.", sess->cmd, sess->arg);
+        printf("DEBUG: cmd = %s, arg = %s.\n", sess->cmd, sess->arg);
         int i;
         int size = sizeof(ctrl_cmds) / sizeof(ctrl_cmds[0]);
         for (i = 0; i < size; i++)
@@ -116,7 +116,7 @@ void handle_child(session_t *sess)
                 }
                 else
                 {
-                    printf("DEBUG: Unimplement command. cmd = %s.", sess->cmd);
+                    printf("DEBUG: Unimplement command. cmd = %s.\n", sess->cmd);
                     ftp_reply(sess, 502, "Unimplement command.");
                 }
                 break;
@@ -126,7 +126,7 @@ void handle_child(session_t *sess)
 
         if (i == size)
         {
-            printf("DEBUG: Unknown command. cmd = %s.", sess->cmd);
+            printf("DEBUG: Unknown command. cmd = %s.\n", sess->cmd);
             ftp_reply(sess, 500, "unknown command.");
         }
         
@@ -140,7 +140,7 @@ int list_common(session_t *sess, int detail)
     DIR *dir = opendir(".");
     if(dir == NULL)
     {
-        printf("DEBUG: Directory listing is NULL.");
+        printf("DEBUG: Directory listing is NULL.\n");
         return 0;
     }
     
@@ -208,7 +208,7 @@ static void do_user(session_t *sess)
 {
     struct passwd *pw = getpwnam(sess->arg);
     if (pw == NULL) {
-        printf("DEBUG: Unknown User. User name = %s.", sess->arg);
+        printf("DEBUG: Unknown User. User name = %s.\n", sess->arg);
         ftp_reply(sess, 530, "Login incorrect");
         return;
     }
@@ -228,7 +228,7 @@ static void do_pass(session_t *sess)
     struct spwd *sp = getspnam(pw->pw_name);
     if (sp == NULL)
     {
-        printf("DEBUG: Get spwd failed. pw_name = %s.", pw->pw_name);
+        printf("DEBUG: Get spwd failed. pw_name = %s.\n", pw->pw_name);
         ftp_reply(sess, 530, "Login incorrect");
         return;
     }
@@ -236,7 +236,7 @@ static void do_pass(session_t *sess)
     char *encrypted_pass = crypt(sess->arg, sp->sp_pwdp);
     if (strcmp(encrypted_pass, sp->sp_pwdp) != 0)
     {
-        printf("DEBUG: Password camper failed.");
+        printf("DEBUG: Password camper failed.\n");
         ftp_reply(sess, 530, "Login incorrect");
         return;
     }
@@ -469,7 +469,7 @@ int port_active(session_t *sess)
     if (pasv_active(sess))
       return 0;
       
-    printf("DEBUG: Enter port mode.");
+    printf("DEBUG: Enter port mode.\n");
     return 1;
   }
   return 0;
@@ -525,7 +525,7 @@ int get_transfer_fd(session_t *sess)
   int ret=1;
   if (!port_active(sess) && !pasv_active(sess))
   {
-    fprintf(stderr,"debug:No port or pasv mode.");
+    fprintf(stderr,"debug:No port or pasv mode.\n");
     return 0;
   }
   
@@ -587,7 +587,7 @@ static void do_abor(session_t *sess)
 }
 static void do_pwd(session_t *sess)
 {
-    char text[1024+1] = {0};
+    char text[2048] = {0};
     char dir[1024+1] = {0};
     getcwd(dir, 1024);
     sprintf(text, "\"%s\"",dir);
