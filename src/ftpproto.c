@@ -227,7 +227,7 @@ static void do_pass(session_t *sess)
     struct spwd *sp = getspnam(pw->pw_name);
     if (sp == NULL)
     {
-        printf("DEBUG: Get spwd failed. pw_name = %s.", pw_name);
+        printf("DEBUG: Get spwd failed. pw_name = %s.", pw->pw_name);
         ftp_reply(sess, 530, "Login incorrect");
         return;
     }
@@ -354,7 +354,8 @@ static void do_retr(session_t *sess)
         ftp_reply(sess,425,"Use port or pasv frist");
         return;
     }
-    
+    long long offset = sess->restart_pos;
+    sess->restart_pos = 0;
     //打开文件
     int fd = open(sess->arg, O_RDONLY);
     if (fd < 0) {
@@ -366,17 +367,26 @@ static void do_retr(session_t *sess)
     int ret;
     ret = local_file_read(fd);
     if (ret == -1) {
-        ftp_reply(sess, 550,"Failed to open.file.");
+        ftp_reply(sess, 550,"Failed to open file.");
         return;
     }
     
     //判断是否为普通文件
     struct stat sbuf;
-    ret = fstat(fd, &setbuf)
+    ret = fstat(fd, &setbuf);
     if (!S_ISREG(sbuf.st_mode)) {
-        ftp_reply(sess, 550,"Failed to open.file.");
+        ftp_reply(sess, 550,"Failed to open file.");
         return;
     }
+    
+    if (offset != 0) {
+        ret = lseek(fd, offset, SEEK_SET);
+        if (ret ==  -1) {
+            ftp_reply(sess, 550,"Failed to open file.");
+            return;
+        }
+    }
+    
     char text[1024] = {0};
     if (sess->is_ascii) {
         sprintf(text, "Opening ASCII mode data connection for %s (%lld bytes)",
@@ -389,9 +399,10 @@ static void do_retr(session_t *sess)
     
     ftp_reply(sess, 150, text);
     
+    int flag = 0;
+    /*
     //下载文件
     char buf[4096] = {0};
-    int flag = 0;
     while (1) {
         ret = readn(fd, buf, sizeof(buf));
         if (ret == -1) {
@@ -411,6 +422,29 @@ static void do_retr(session_t *sess)
             flag = 2;
         }
     }
+    */
+    
+    long long bytes_to_send = sbuf.st_size;
+    if (offset > bytes_to_send) {
+        bytes_to_send = 0;
+    } else {
+        bytes_to_send -= offset;
+    }
+    
+    while (bytes_to_send) {
+        int num_this_time = bytes_to_send > 4096 ? 4096 : bytes_to_send;
+        ret = sendfile(sess->data_fd, fd, NULL, num_this_time);
+        if (ret == -1) {
+            flag = 2;
+            break;
+        }
+        bytes_to_send -= ret;
+    }
+    
+    if (bytes_to_send == 0) {
+        flag = 0;
+    }
+    
     close(sess->data_fd);
     sess->data_fd = -1;
     if (flag == 0 ) {

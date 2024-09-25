@@ -8,7 +8,7 @@
 int main(int argc, char* argv[])
 {
     signal(SIGCHLD,SIG_IGN);
-    int listenfd = –1;
+    int listenfd = -1;
     int conn;
     pid_t pid;
     //初始化会话变量
