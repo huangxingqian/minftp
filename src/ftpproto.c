@@ -604,6 +604,7 @@ int pasv_active(session_t *sess)
 
 int get_port_fd(session_t *sess)
 {
+    /*
   priv_sock_send_cmd(sess->child_fd, PRIV_SOCK_GET_DATA_SOCK);
   unsigned short port = ntohs(sess->port_addr->sin_port);
   char *ip = inet_ntoa(sess->port_addr->sin_addr);
@@ -612,10 +613,31 @@ int get_port_fd(session_t *sess)
   char res = priv_sock_get_result(sess->child_fd);
   if (res == PRIV_SOCK_RESULT_BAD) {
     printf("ERROR: command PRIV_SOCK_GET_DATA_SOCK execute failed.");
-    return 0;
+::    return 0;
   } else if (res == PRIV_SOCK_RESULT_OK) {
     sess->data_fd = priv_sock_recv_fd(sess->child_fd);
   }
+  return 1;
+  */
+  unsigned short port = ntohs(sess->port_addr->sin_port);
+  char *ip = inet_ntoa(sess->port_addr->sin_addr);
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_port = ntohs(port);
+  addr.sin_addr.s_addr = inet_addr(ip);
+  
+  int fd = tcp_client(0);
+  if (fd == -1) {
+    printf("ERROR: tcp_client execute failed.");
+    return 0;
+  }
+  
+  if (connect_timeout(fd, &addr,sizeof(addr), 0) < 0) {
+    printf("ERROR: connect_timeout execute failed.");
+    return 0;
+  }
+  sess->data_fd = fd;
   return 1;
 }
 
