@@ -10,6 +10,12 @@ typedef struct session
     char cmd[MAX_COMMAND];
     char arg[MAX_ARG];
 
+    //限速
+    unsigned int bw_upload_rate_max;
+    unsigned int bw_download_rate_max;
+    long bw_transfer_star_sec;
+    long bw_transfer_star_usec;
+    
     // 父子进程通信
     int parent_fd;
     int child_fd;

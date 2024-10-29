@@ -15,6 +15,8 @@ int main(int argc, char* argv[])
     session_t sess = 
     {
         -1, "", "", "",
+        
+        0, 0, 0, 0,
 
         -1, -1,
         
@@ -31,6 +33,8 @@ int main(int argc, char* argv[])
     
     //加载配置文件
     parseconf_load_file("minftpd.conf");
+    sess->bw_upload_rate_max = tunable_upload_max_rate;
+    sess->bw_download_rate_max = tunable_download_max_rate;
     
     //创建侦听套接字
     listenfd = tcp_server(NULL, 5188);

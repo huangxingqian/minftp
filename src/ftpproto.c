@@ -350,6 +350,40 @@ static void do_stru(session_t *sess)
 static void do_node(session_t *sess)
 {
 }
+
+static void limit_rate(session_t *sess, int bytes，int is_upload)
+{
+    //限速：休眠时间 = (当前速率/最大传输速率 – 1) * 当前时间
+    //当前时间
+    int curr_sec = get_time_sec;
+    int curr_usec = get_time_usec;
+    double elapsed = curr_sec - sess->bw_transfer_star_sec;
+    elapsed += (double)(curr_usec - sess->bw_transfer_star_usec) / (double)1000000;
+    if (elapsed <= 0) {
+        elapsed = 0.01;
+    }
+    //当前传输速度
+    unsigned int bw_rate = (unsigned int)((double)bytes / elapsed);
+    
+    double rate_ratio;
+    if (is_upload) {
+        if (bw_rate > sess->bw_upload_rate_max) {
+            return;
+        }
+        rate_ratio = bw_rate / sess->bw_upload_rate_max;
+    } else {
+        if (bw_rate > sess->bw_download_rate_max) {
+            return;
+        }
+        rate_ratio = bw_rate / sess->bw_download_rate_max;
+    }
+    
+    double pause_time = (rate_ratio - (double)1) * elapsed;
+    nano_sleep(pause_time);
+    
+    sess->bw_transfer_star_sec = get_time_sec();
+    sess->bw_transfer_star_usec = get_time_usec();
+}
 static void do_retr(session_t *sess)
 {
     if (get_transfer_fd(sess) == 0) {
@@ -401,6 +435,10 @@ static void do_retr(session_t *sess)
     
     ftp_reply(sess, 150, text);
     
+    //限速：休眠时间 = (当前速率/最大传输速率 – 1) * 当前时间
+    sess->bw_transfer_star_sec = get_time_sec;
+    sess->bw_transfer_star_usec = get_time_usec;
+    
     int flag = 0;
     /*
     //下载文件
@@ -440,6 +478,7 @@ static void do_retr(session_t *sess)
             flag = 2;
             break;
         }
+        limit_rate(sess, ret, 0);
         bytes_to_send -= ret;
     }
     
@@ -520,6 +559,9 @@ void upload_common(session_t *sess, int is_append)
     
     ftp_reply(sess, 150, text);
     
+    sess->bw_transfer_star_sec = get_time_sec;
+    sess->bw_transfer_star_usec = get_time_usec;
+    
     //上传文件
     int flag = 0;
     char buf[4096] = {0};
@@ -536,7 +578,7 @@ void upload_common(session_t *sess, int is_append)
             flag = 0;
             break;
         }
-        
+        limit_rate(sess, ret, 1);
         if (writen(fd, buf, ret) != ret) {
             break;
             flag = 1;
