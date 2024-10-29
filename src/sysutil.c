@@ -601,5 +601,5 @@ void nano_sleep(double seconds)
     do
     {
         ret = nanosleep(&ts, &ts);
-    }while(ret < 0 && errno = EINTR)
+    }while(ret < 0 && errno == EINTR);
 }
