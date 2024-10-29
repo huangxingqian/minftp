@@ -525,7 +525,7 @@ const char *statbuf_get_date(struct stat *sbuf)
   return datebuf;
 }
 
-int local_file_read(int fd)
+int lock_file_read(int fd)
 {
     int ret;
     struct flock the_lock;
@@ -538,6 +538,38 @@ int local_file_read(int fd)
     {
         ret = fcntl(fd, F_SETLKW, &the_lock);
     } while(ret < 0 && errno == EINTR);
+    
+    return ret;
+}
+
+int lock_file_write(int fd)
+{
+    int ret;
+    struct flock the_lock;
+    memset(&the_lock, 0, sizeof(the_lock));
+    the_lock.l_type = F_WRLCK;
+    the_lock.l_whence = SEEK_SET;
+    the_lock.l_start = 0;
+    the_lock.l_len = 0;
+    do
+    {
+        ret = fcntl(fd, F_SETLKW, &the_lock);
+    } while(ret < 0 && errno == EINTR);
+    
+    return ret;
+}
+
+int unlocal_file(int fd)
+{
+    int ret;
+    struct flock the_lock;
+    memset(&the_lock, 0, sizeof(the_lock));
+    the_lock.l_type = F_UNLCK;
+    the_lock.l_whence = SEEK_SET;
+    the_lock.l_start = 0;
+    the_lock.l_len = 0;
+    
+    ret = fcntl(fd, F_SETLK, &the_lock);
     
     return ret;
 }

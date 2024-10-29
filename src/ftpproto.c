@@ -12,6 +12,7 @@ static void ftp_reply(session_t *sess, int status,  const char *text);
 int port_active(session_t *sess);
 int pasv_active(session_t *sess);
 int get_transfer_fd(session_t *sess);
+void upload_common(session_t *sess, int is_append);
 static void do_user(session_t *sess);
 static void do_pass(session_t *sess);
 static void do_feat(session_t *sess);
@@ -366,7 +367,7 @@ static void do_retr(session_t *sess)
     
     //加读的锁
     int ret;
-    ret = local_file_read(fd);
+    ret = lock_file_read(fd);
     if (ret == -1) {
         ftp_reply(sess, 550,"Failed to open file.");
         return;
@@ -448,6 +449,7 @@ static void do_retr(session_t *sess)
     
     close(sess->data_fd);
     sess->data_fd = -1;
+    close(fd);
     if (flag == 0 ) {
         ftp_reply(sess, 226,"Transfer complete.");
     } else if (flag == 1) {
@@ -457,7 +459,7 @@ static void do_retr(session_t *sess)
     }
 }
 
-void upload_common(session_t *sess, int mode)
+void upload_common(session_t *sess, int is_append)
 {
     if (get_transfer_fd(sess) == 0) {
         ftp_reply(sess,425,"Use port or pasv frist");
@@ -474,10 +476,28 @@ void upload_common(session_t *sess, int mode)
     
     //加写的锁
     int ret;
-    ret = local_file_write(fd);
+    ret = lock_file_write(fd);
     if (ret == -1) {
         ftp_reply(sess, 550,"Failed to open file.");
         return;
+    }
+    
+    if (!is_append && offset == 0) {
+        ftruncate(fd, 0);
+        if (lseek(fd, 0, SEEK_SET) < 0) {
+            ftp_reply(sess, 553,"Could not create file.");
+            return;
+        }
+    } else if (!is_append &&  offset != 0) {
+        if (lseek(fd, 0, SEEK_SET) < 0) {
+            ftp_reply(sess, 553,"Could not create file.");
+            return;
+        }
+    } else if (is_append) {
+        if (lseek(fd, 0, SEEK_SET) < 0) {
+            ftp_reply(sess, 553,"Could not create file.");
+            return;
+        }
     }
     
     //判断是否为普通文件
@@ -488,15 +508,7 @@ void upload_common(session_t *sess, int mode)
         return;
     }
     
-    if (offset != 0) {
-        ret = lseek(fd, offset, SEEK_SET);
-        if (ret ==  -1) {
-            ftp_reply(sess, 550,"Failed to open file.");
-            return;
-        }
-    }
-    
-    char text[2048] = {0};
+    char text[4096] = {0};
     if (sess->is_ascii) {
         sprintf(text, "Opening ASCII mode data connection for %s (%lld bytes)",
             sess->arg, (long long)sbuf.st_size);
@@ -508,17 +520,16 @@ void upload_common(session_t *sess, int mode)
     
     ftp_reply(sess, 150, text);
     
+    //上传文件
     int flag = 0;
-    /*
-    //下载文件
     char buf[4096] = {0};
     while (1) {
-        ret = readn(fd, buf, sizeof(buf));
+        ret = readn(sess->data_fd, buf, sizeof(buf));
         if (ret == -1) {
             if (errno == EINTR) {
                 continue;
             } else {
-                flag = 1;
+                flag = 2;
                 break;
             }
         } else if (ret == 0) {
@@ -526,43 +537,25 @@ void upload_common(session_t *sess, int mode)
             break;
         }
         
-        if (writen(sess->data_fd, buf, ret) != ret) {
+        if (writen(fd, buf, ret) != ret) {
             break;
-            flag = 2;
+            flag = 1;
         }
     }
-    */
     
-    long long bytes_to_send = sbuf.st_size;
-    if (offset > bytes_to_send) {
-        bytes_to_send = 0;
-    } else {
-        bytes_to_send -= offset;
-    }
-    
-    while (bytes_to_send) {
-        int num_this_time = bytes_to_send > 4096 ? 4096 : bytes_to_send;
-        ret = sendfile(sess->data_fd, fd, NULL, num_this_time);
-        if (ret == -1) {
-            flag = 2;
-            break;
-        }
-        bytes_to_send -= ret;
-    }
-    
-    if (bytes_to_send == 0) {
-        flag = 0;
-    }
     
     close(sess->data_fd);
     sess->data_fd = -1;
+    close(fd);
     if (flag == 0 ) {
         ftp_reply(sess, 226,"Transfer complete.");
     } else if (flag == 1) {
-        ftp_reply(sess, 451,"Failure reading form local file.");
+        ftp_reply(sess, 451,"Failure writing to local file.");
     } else if (flag == 2) {
-        ftp_reply(sess, 426,"Failure writing to network stream.");
+        ftp_reply(sess, 426,"Failure reading form to network stream.");
     }
+    
+    
 }
 
 
