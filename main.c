@@ -5,6 +5,8 @@
 #include "tunable.h"
 #include "ftpproto.h"
 
+extern session_t *p_sess;  
+
 int main(int argc, char* argv[])
 {
     signal(SIGCHLD,SIG_IGN);
@@ -18,13 +20,13 @@ int main(int argc, char* argv[])
         
         0, 0, 0, 0,
 
-        -1, -1,
+        -1, -1, 0,
         
         NULL,-1,-1,
 
         0,0,0,NULL
     };
-    
+    p_sess = &sess;
     //需要root用户来运行
     if (getuid() != 0) {
         fprintf(stderr,"must be as root!\n");

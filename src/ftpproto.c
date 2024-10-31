@@ -43,6 +43,10 @@ static void do_size(session_t *sess);
 static void do_stat(session_t *sess);
 static void do_noop(session_t *sess);
 static void do_help(session_t *sess);
+void handle_alarm_timeout(int sig);
+void handle_sigalarm(void);
+void start_cmdio_alarm(void);
+void star_data_alarm(void);
 
 typedef struct ftpcmd
 {
@@ -85,6 +89,48 @@ ftpcmd_t ctrl_cmds[] =
 
 };
 
+session_t *p_sess;  
+void handle_alarm_timeout(int sig)
+{
+    shutdown(p_sess->ctrl_fd, SHUT_RD);
+    ftp_reply(p_sess, 421, "Timeout.");
+    shutdown(p_sess->ctrl_fd, SHUT_WR);
+    exit(EXIT_FAILURE);
+}
+
+
+void handle_sigalarm(void)
+{
+    if (!p_sess->data_process) {
+        ftp_reply(p_sess, 421, "Data timeout.Reconnect.Sorry.");
+        exit(EXIT_FAILURE);
+    }
+    
+    p_sess->data_process = 0;
+    star_data_alarm();
+}
+
+void start_cmdio_alarm(void)
+{
+    if (tunable_idle_session_timeout > 0) {
+        signal(SIGALRM, handle_alarm_timeout);
+        alarm(tunable_idle_session_timeout);
+    }
+}
+void star_data_alarm(void)
+{
+    if (tunable_data_connection_timeout > 0) {
+        signal(SIGALRM, handle_sigalarm);
+        alarm(tunable_data_connection_timeout);
+    }
+    
+    if (tunable_idle_session_timeout > 0) {
+        //关闭闹钟
+        alarm(0);
+    }
+}
+
+
 void handle_child(session_t *sess)
 {
     int ret;
@@ -94,7 +140,8 @@ void handle_child(session_t *sess)
         memset(sess->cmdline, 0, sizeof(sess->cmdline));
         memset(sess->cmd, 0,sizeof(sess->cmd));
         memset(sess->arg, 0,sizeof(sess->arg));
-
+        
+        start_cmdio_alarm();
         //解析FTP命令和参数
         //处理FTP命令
         ret = readline(sess->ctrl_fd, sess->cmdline, MAX_COMMAND_LINE);
@@ -368,11 +415,15 @@ static void limit_rate(session_t *sess, int bytes, int is_upload)
     double rate_ratio;
     if (is_upload) {
         if (bw_rate < sess->bw_upload_rate_max) {
+            sess->bw_transfer_star_sec = get_time_sec();
+            sess->bw_transfer_star_usec = get_time_usec();
             return;
         }
         rate_ratio = bw_rate / sess->bw_upload_rate_max;
     } else {
         if (bw_rate < sess->bw_download_rate_max) {
+            sess->bw_transfer_star_sec = get_time_sec();
+            sess->bw_transfer_star_usec = get_time_usec();
             return;
         }
         rate_ratio = bw_rate / sess->bw_download_rate_max;
@@ -470,7 +521,7 @@ static void do_retr(session_t *sess)
     } else {
         bytes_to_send -= offset;
     }
-    
+    star_data_alarm();
     while (bytes_to_send) {
         int num_this_time = bytes_to_send > 4096 ? 4096 : bytes_to_send;
         ret = sendfile(sess->data_fd, fd, NULL, num_this_time);
@@ -478,6 +529,7 @@ static void do_retr(session_t *sess)
             flag = 2;
             break;
         }
+        sess->data_process = 1;
         limit_rate(sess, ret, 0);
         bytes_to_send -= ret;
     }
@@ -496,6 +548,8 @@ static void do_retr(session_t *sess)
     } else if (flag == 2) {
         ftp_reply(sess, 426,"Failure writing to network stream.");
     }
+    
+    start_cmdio_alarm();
 }
 
 void upload_common(session_t *sess, int is_append)
@@ -559,6 +613,9 @@ void upload_common(session_t *sess, int is_append)
     
     ftp_reply(sess, 150, text);
     
+    //重新安装信号，关闭闹钟
+    star_data_alarm();
+    
     sess->bw_transfer_star_sec = get_time_sec();
     sess->bw_transfer_star_usec = get_time_usec();
     
@@ -578,6 +635,7 @@ void upload_common(session_t *sess, int is_append)
             flag = 0;
             break;
         }
+        sess->data_process = 1;
         limit_rate(sess, ret, 1);
         if (writen(fd, buf, ret) != ret) {
             break;
@@ -596,8 +654,7 @@ void upload_common(session_t *sess, int is_append)
     } else if (flag == 2) {
         ftp_reply(sess, 426,"Failure reading form to network stream.");
     }
-    
-    
+    start_cmdio_alarm();
 }
 
 

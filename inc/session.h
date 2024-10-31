@@ -19,6 +19,9 @@ typedef struct session
     // 父子进程通信
     int parent_fd;
     int child_fd;
+    
+    //数据通道连接标志位
+    int data_process;
 
     struct sockaddr_in* port_addr;
     int pasv_listen_fd;
