@@ -609,7 +609,7 @@ void activate_oobindline(int fd)
     int oob_inline = 1;
     int ret;
     
-    ret = setsockopt(fd, SOL_SOCKET, SOL_OOBINLINE, &oob_inline, sizeof(oob_inline));
+    ret = setsockopt(fd, SOL_SOCKET, SO_OOBINLINE, &oob_inline, sizeof(oob_inline));
     if (ret == -1) {
         ERR_EXIT("setsockopt");
     }

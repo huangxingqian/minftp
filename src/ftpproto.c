@@ -99,7 +99,7 @@ void handle_sigurg(int sig)
     }
     
     char cmdline[MAX_COMMAND_LINE] = {0};
-    ret = readline(p_sess->ctrl_fd, cmdline, MAX_COMMAND_LINE);
+    int ret = readline(p_sess->ctrl_fd, cmdline, MAX_COMMAND_LINE);
     if (ret <= 0)
         ERR_EXIT("readline");
     str_trim_crlf(cmdline);
