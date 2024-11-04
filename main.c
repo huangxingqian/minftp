@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
         
         0, 0, 0, 0,
 
-        -1, -1, 0,
+        -1, -1, 0, 0,
         
         NULL,-1,-1,
 

@@ -3,9 +3,12 @@
 #include "privparent.h"
 #include "ftpproto.h"
 #include "privsock.h"
+#include "sysutil.h"
 
 void begin_session(session_t *sess)
 {
+    activate_oobindline(sess->ctrl_fd);
+
     priv_sock_init(sess);
     pid_t pid;
     

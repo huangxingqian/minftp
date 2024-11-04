@@ -603,3 +603,24 @@ void nano_sleep(double seconds)
         ret = nanosleep(&ts, &ts);
     }while(ret < 0 && errno == EINTR);
 }
+//开启套接字接受带外数据
+void activate_oobindline(int fd)
+{
+    int oob_inline = 1;
+    int ret;
+    
+    ret = setsockopt(fd, SOL_SOCKET, SOL_OOBINLINE, &oob_inline, sizeof(oob_inline));
+    if (ret == -1) {
+        ERR_EXIT("setsockopt");
+    }
+    
+}
+
+void activate_sigurg(int fd)
+{
+    int ret;
+    ret = fcntl(fd, F_SETOWN, &getpid);
+    if (ret == -1) {
+        ERR_EXIT("fcntl");
+    }
+}

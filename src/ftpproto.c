@@ -44,7 +44,8 @@ static void do_stat(session_t *sess);
 static void do_noop(session_t *sess);
 static void do_help(session_t *sess);
 void handle_alarm_timeout(int sig);
-void handle_sigalarm(void);
+void handle_sigalarm(int sig);
+void handle_sigurg(int sig);
 void start_cmdio_alarm(void);
 void star_data_alarm(void);
 
@@ -90,6 +91,29 @@ ftpcmd_t ctrl_cmds[] =
 };
 
 session_t *p_sess;  
+
+void handle_sigurg(int sig)
+{
+    if (p_sess->data_fd == -1) {
+        return;
+    }
+    
+    char cmdline[MAX_COMMAND_LINE] = {0};
+    ret = readline(p_sess->ctrl_fd, cmdline, MAX_COMMAND_LINE);
+    if (ret <= 0)
+        ERR_EXIT("readline");
+    str_trim_crlf(cmdline);
+    
+    if (strcmp(cmdline, "ABOR") == 0) {
+        p_sess->abor_received = 1;
+        shutdown(p_sess->data_fd, SHUT_RDWR);
+    } else {
+        ftp_reply(p_sess, 500, "unknown command.");
+    }
+
+}
+
+
 void handle_alarm_timeout(int sig)
 {
     shutdown(p_sess->ctrl_fd, SHUT_RD);
@@ -99,7 +123,7 @@ void handle_alarm_timeout(int sig)
 }
 
 
-void handle_sigalarm(void)
+void handle_sigalarm(int sig)
 {
     if (!p_sess->data_process) {
         ftp_reply(p_sess, 421, "Data timeout.Reconnect.Sorry.");
@@ -109,6 +133,15 @@ void handle_sigalarm(void)
     p_sess->data_process = 0;
     star_data_alarm();
 }
+
+void check_abor(session_t *sess)
+{
+    if (sess->abor_received) {
+        sess->abor_received = 0;
+        ftp_reply(sess, 226,"ABOR successful.");
+    }
+}
+
 
 void start_cmdio_alarm(void)
 {
@@ -122,9 +155,7 @@ void star_data_alarm(void)
     if (tunable_data_connection_timeout > 0) {
         signal(SIGALRM, handle_sigalarm);
         alarm(tunable_data_connection_timeout);
-    }
-    
-    if (tunable_idle_session_timeout > 0) {
+    }else if (tunable_idle_session_timeout > 0) {
         //关闭闹钟
         alarm(0);
     }
@@ -289,6 +320,9 @@ static void do_pass(session_t *sess)
         return;
     }
     
+    signal(SIGURG, handle_sigurg);
+    activate_sigurg(sess->ctrl_fd);
+    
     umask(tunable_local_umask);
     //部分用户权限过低，暂时屏蔽
     //setgid(pw->pw_gid);
@@ -337,6 +371,8 @@ static void do_cdup(session_t *sess)
 }
 static void do_quit(session_t *sess)
 {
+    ftp_reply(sess, 221, "Goodbye.");
+    exit(EXIT_SUCCESS);
 }
 static void do_port(session_t *sess)
 {
@@ -531,6 +567,10 @@ static void do_retr(session_t *sess)
         }
         sess->data_process = 1;
         limit_rate(sess, ret, 0);
+        if (sess->abor_received == 1) {
+            flag = 2;
+            break;
+        }
         bytes_to_send -= ret;
     }
     
@@ -541,14 +581,14 @@ static void do_retr(session_t *sess)
     close(sess->data_fd);
     sess->data_fd = -1;
     close(fd);
-    if (flag == 0 ) {
+    if (flag == 0 && !sess->abor_received) {
         ftp_reply(sess, 226,"Transfer complete.");
     } else if (flag == 1) {
         ftp_reply(sess, 451,"Failure reading form local file.");
     } else if (flag == 2) {
         ftp_reply(sess, 426,"Failure writing to network stream.");
     }
-    
+    check_abor(sess);
     start_cmdio_alarm();
 }
 
@@ -635,8 +675,12 @@ void upload_common(session_t *sess, int is_append)
             flag = 0;
             break;
         }
-        sess->data_process = 1;
+        
         limit_rate(sess, ret, 1);
+        if (sess->abor_received == 1) {
+            flag = 2;
+            break;
+        }
         if (writen(fd, buf, ret) != ret) {
             break;
             flag = 1;
@@ -647,13 +691,16 @@ void upload_common(session_t *sess, int is_append)
     close(sess->data_fd);
     sess->data_fd = -1;
     close(fd);
-    if (flag == 0 ) {
+    if (flag == 0 && !sess->abor_received) {
         ftp_reply(sess, 226,"Transfer complete.");
     } else if (flag == 1) {
         ftp_reply(sess, 451,"Failure writing to local file.");
     } else if (flag == 2) {
         ftp_reply(sess, 426,"Failure reading form to network stream.");
     }
+    
+    
+    check_abor(sess);
     start_cmdio_alarm();
 }
 
@@ -810,6 +857,7 @@ static void do_rest(session_t *sess)
 }
 static void do_abor(session_t *sess)
 {
+    ftp_reply(sess, 225, "No transfer to ABOR.");
 }
 static void do_pwd(session_t *sess)
 {
@@ -902,6 +950,7 @@ static void do_stat(session_t *sess)
 }
 static void do_noop(session_t *sess)
 {
+    ftp_reply(sess, 200, "NOOP ok.");
 }
 static void do_help(session_t *sess)
 {

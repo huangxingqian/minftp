@@ -22,6 +22,7 @@ typedef struct session
     
     //数据通道连接标志位
     int data_process;
+    int abor_received;
 
     struct sockaddr_in* port_addr;
     int pasv_listen_fd;
