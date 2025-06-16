@@ -5,8 +5,12 @@
 #include "tunable.h"
 #include "ftpproto.h"
 
-extern session_t *p_sess;  
+extern session_t *p_sess;
 
+#define DEBUG_INFO(format, args...)						\
+	do { if (DEBUG_FLAG) fprintf(stderr, format, args); } while(0)
+
+//DEBUG_INFO("DEBUG: [%s]:[%d]: \n", __FILE__, __LINE__);
 int main(int argc, char* argv[])
 {
     signal(SIGCHLD,SIG_IGN);
